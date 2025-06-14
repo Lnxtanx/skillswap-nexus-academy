@@ -9,6 +9,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      conversation_history: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          message_type: string
+          metadata: Json | null
+          session_id: string | null
+          timestamp: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          message_type: string
+          metadata?: Json | null
+          session_id?: string | null
+          timestamp: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          session_id?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_history_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "tutor_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_content: {
         Row: {
           article_link: string | null
@@ -266,6 +304,63 @@ export type Database = {
           valid_until?: string
         }
         Relationships: []
+      }
+      tutor_sessions: {
+        Row: {
+          conversation_summary: string | null
+          course_id: number | null
+          created_at: string | null
+          ended_at: string | null
+          id: string
+          lesson_id: string | null
+          persona_id: string
+          replica_id: string
+          started_at: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          conversation_summary?: string | null
+          course_id?: number | null
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          lesson_id?: string | null
+          persona_id: string
+          replica_id: string
+          started_at?: string
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          conversation_summary?: string | null
+          course_id?: number | null
+          created_at?: string | null
+          ended_at?: string | null
+          id?: string
+          lesson_id?: string | null
+          persona_id?: string
+          replica_id?: string
+          started_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutor_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutor_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_interactions: {
         Row: {

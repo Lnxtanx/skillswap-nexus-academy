@@ -23,19 +23,29 @@ export const useTutorSession = () => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      const { data, error } = await supabase
-        .from('tutor_sessions')
-        .insert([{
-          user_id: user.id,
-          course_id: sessionData.courseId,
-          lesson_id: sessionData.lessonId,
-          persona_id: sessionData.personaId,
-          replica_id: sessionData.replicaId,
-          status: 'active',
-          started_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
+      // Using direct SQL query since tables might not be in types yet
+      const { data, error } = await supabase.rpc('create_tutor_session', {
+        p_user_id: user.id,
+        p_course_id: sessionData.courseId,
+        p_lesson_id: sessionData.lessonId,
+        p_persona_id: sessionData.personaId,
+        p_replica_id: sessionData.replicaId
+      }).catch(async () => {
+        // Fallback to direct insert if RPC doesn't exist
+        return await supabase
+          .from('tutor_sessions' as any)
+          .insert([{
+            user_id: user.id,
+            course_id: sessionData.courseId,
+            lesson_id: sessionData.lessonId,
+            persona_id: sessionData.personaId,
+            replica_id: sessionData.replicaId,
+            status: 'active',
+            started_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+      });
 
       if (error) throw error;
 
@@ -51,7 +61,7 @@ export const useTutorSession = () => {
   const endSession = async (sessionId: string, conversationHistory: ConversationMessage[]) => {
     try {
       const { data, error } = await supabase
-        .from('tutor_sessions')
+        .from('tutor_sessions' as any)
         .update({
           status: 'completed',
           ended_at: new Date().toISOString(),
@@ -83,7 +93,7 @@ export const useTutorSession = () => {
       }));
 
       const { error } = await supabase
-        .from('conversation_history')
+        .from('conversation_history' as any)
         .insert(conversationRecords);
 
       if (error) throw error;
@@ -100,7 +110,7 @@ export const useTutorSession = () => {
       queryKey: ['tutor-sessions', userId],
       queryFn: async () => {
         const { data, error } = await supabase
-          .from('tutor_sessions')
+          .from('tutor_sessions' as any)
           .select(`
             *,
             conversation_history(*)

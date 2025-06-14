@@ -243,9 +243,13 @@ const AITutor: React.FC<AITutorProps> = ({
 
   const endTutorSession = async () => {
     if (sessionId) {
-      const sessionData = await endSession(sessionId, conversationHistory);
-      if (onSessionComplete) {
-        onSessionComplete(sessionData);
+      try {
+        const sessionData = await endSession(sessionId, conversationHistory);
+        if (onSessionComplete && sessionData) {
+          onSessionComplete(sessionData as TutorSessionData);
+        }
+      } catch (error) {
+        console.error('Error ending session:', error);
       }
     }
     setIsVideoActive(false);
