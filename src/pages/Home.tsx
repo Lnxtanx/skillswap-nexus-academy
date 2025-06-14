@@ -2,8 +2,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import CourseCard from '@/components/CourseCard';
-import UserProfile from '@/components/UserProfile';
 
 const Home = () => {
   const featuredCourses = [
@@ -53,12 +51,12 @@ const Home = () => {
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
               <Link to="/courses">
-                <Button size="lg" className="ai-button px-12 py-4 text-lg font-medium animate-glow">
+                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-12 py-4 text-lg font-medium">
                   Start Learning with AI
                 </Button>
               </Link>
               <Link to="/learn">
-                <Button size="lg" variant="outline" className="border-gray-700 text-white px-12 py-4 text-lg font-medium hover:bg-gray-800">
+                <Button size="lg" className="bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 px-12 py-4 text-lg font-medium">
                   View My Progress
                 </Button>
               </Link>
@@ -156,7 +154,7 @@ const Home = () => {
                     <span className="bg-gray-800 px-2 py-1 rounded text-xs">{course.level}</span>
                   </div>
                   
-                  <Button className="w-full ai-button py-3">
+                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3">
                     Start with AI Tutor
                   </Button>
                 </div>
@@ -166,7 +164,7 @@ const Home = () => {
 
           <div className="text-center mt-12">
             <Link to="/courses">
-              <Button size="lg" variant="outline" className="border-gray-700 text-white hover:bg-gray-800 px-8 py-3">
+              <Button size="lg" className="bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 px-8 py-3">
                 View All Courses
               </Button>
             </Link>
@@ -186,12 +184,12 @@ const Home = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/courses">
-                <Button size="lg" className="ai-button px-8 py-4">
+                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 py-4">
                   Start Learning Now
                 </Button>
               </Link>
               <Link to="/learn">
-                <Button size="lg" variant="outline" className="border-gray-700 text-white px-8 py-4 hover:bg-gray-800">
+                <Button size="lg" className="bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 px-8 py-4">
                   View Learning Dashboard
                 </Button>
               </Link>

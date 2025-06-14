@@ -43,7 +43,7 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-bold gradient-text">AI Academy</span>
+              <span className="text-2xl font-bold gradient-text">SkillSwap</span>
             </Link>
           </div>
 
@@ -94,7 +94,7 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={() => setShowAuthModal(true)} className="ai-button">
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0">
                 Sign In
               </Button>
             )}
@@ -160,7 +160,7 @@ const Navbar = () => {
                     setShowAuthModal(true);
                     setIsMenuOpen(false);
                   }}
-                  className="w-full ai-button"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
                 >
                   Sign In
                 </Button>
