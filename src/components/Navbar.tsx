@@ -1,109 +1,178 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import ThemeToggle from '@/components/ThemeToggle';
-import { Menu, X, BookOpen, User, GraduationCap, Search } from 'lucide-react';
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Menu, X, User, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import AuthModal from "@/components/auth/AuthModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const location = useLocation();
+  const { user, signOut, loading } = useAuth();
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+  const navigation = [
+    { name: "Home", href: "/" },
+    { name: "Courses", href: "/courses" },
+    { name: "Learn", href: "/learn" },
+    { name: "Teach", href: "/teach" },
+  ];
+
+  const isActivePath = (path: string) => {
+    return location.pathname === path;
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      // Error is handled in useAuth hook
+    }
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
-            <div className="relative">
-              <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center animate-float">
-                <GraduationCap className="w-5 h-5 text-white" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full animate-pulse-slow"></div>
-            </div>
-            <span className="text-xl font-bold gradient-text">SkillSwap</span>
-          </Link>
+    <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link to="/" className="flex-shrink-0 flex items-center">
+              <span className="text-2xl font-bold text-blue-600">SkillSwap</span>
+              <span className="text-2xl font-bold text-gray-900 ml-1">Academy</span>
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link to="/courses" className="text-gray-300 hover:text-white transition-colors hover:animate-float">
-              <BookOpen className="w-5 h-5 inline mr-2" />
-              Courses
-            </Link>
-            <Link to="/learn" className="text-gray-300 hover:text-white transition-colors hover:animate-float">
-              Learn
-            </Link>
-            <Link to="/teach" className="text-gray-300 hover:text-white transition-colors hover:animate-float">
-              Teach
-            </Link>
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`${
+                  isActivePath(item.href)
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-700 hover:text-blue-600"
+                } px-3 py-2 text-sm font-medium transition-colors duration-200`}
+              >
+                {item.name}
+              </Link>
+            ))}
           </div>
 
-          {/* Right Side */}
+          {/* Desktop Auth */}
           <div className="hidden md:flex items-center space-x-4">
-            <ThemeToggle />
-            <Link to="/profile">
-              <Button variant="ghost" size="sm" className="glass-card hover:animate-float">
-                <User className="w-4 h-4 mr-2" />
-                Profile
+            {loading ? (
+              <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
+                      <AvatarFallback>
+                        {user.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="flex items-center">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button onClick={() => setShowAuthModal(true)}>
+                Sign In
               </Button>
-            </Link>
+            )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center space-x-2">
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleMenu}
-              className="glass-card"
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-gray-700 hover:text-blue-600 p-2"
             >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden glass-card mt-2 animate-slide-down">
-            <div className="px-4 py-2 space-y-2">
+      {/* Mobile Navigation */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-white border-t border-gray-200">
+          <div className="px-2 pt-2 pb-3 space-y-1">
+            {navigation.map((item) => (
               <Link
-                to="/courses"
-                className="block py-2 text-gray-300 hover:text-white transition-colors"
+                key={item.name}
+                to={item.href}
                 onClick={() => setIsMenuOpen(false)}
+                className={`${
+                  isActivePath(item.href)
+                    ? "text-blue-600 bg-blue-50"
+                    : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                } block px-3 py-2 text-base font-medium rounded-md transition-colors duration-200`}
               >
-                <BookOpen className="w-5 h-5 inline mr-2" />
-                Courses
+                {item.name}
               </Link>
-              <Link
-                to="/learn"
-                className="block py-2 text-gray-300 hover:text-white transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Learn
-              </Link>
-              <Link
-                to="/teach"
-                className="block py-2 text-gray-300 hover:text-white transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Teach
-              </Link>
-              <Link
-                to="/profile"
-                className="block py-2 text-gray-300 hover:text-white transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <User className="w-4 h-4 inline mr-2" />
-                Profile
-              </Link>
+            ))}
+            
+            {/* Mobile Auth */}
+            <div className="pt-4 pb-2 border-t border-gray-200">
+              {user ? (
+                <div className="space-y-1">
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      setIsMenuOpen(false);
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <Button 
+                  onClick={() => {
+                    setShowAuthModal(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full"
+                >
+                  Sign In
+                </Button>
+              )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} />
     </nav>
   );
 };
