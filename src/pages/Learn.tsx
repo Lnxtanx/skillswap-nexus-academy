@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 const Learn = () => {
   const navigate = useNavigate();
 
-  // AI-powered enrolled courses
   const enrolledCourses = [
     {
       id: 1,
@@ -40,7 +39,7 @@ const Learn = () => {
       name: 'Code Master',
       avatar: '🧑‍💻',
       specialty: 'Programming & Tech',
-      description: 'Expert in JavaScript, Python, React, and more',
+      description: 'Expert in JavaScript, Python, React, and modern development',
       courses: 2,
       category: 'programming'
     },
@@ -49,8 +48,8 @@ const Learn = () => {
       name: 'Professor Pine',
       avatar: '👨‍🔬',
       specialty: 'Sciences',
-      description: 'Physics, Chemistry, Biology, and Mathematics',
-      courses: 1,
+      description: 'Physics, Chemistry, Biology, and advanced research methods',
+      courses: 2,
       category: 'science'
     },
     {
@@ -58,8 +57,8 @@ const Learn = () => {
       name: 'Chef Charlie',
       avatar: '👨‍🍳',
       specialty: 'Culinary Arts',
-      description: 'French cuisine, baking, and cooking techniques',
-      courses: 1,
+      description: 'French cuisine, baking, and professional cooking techniques',
+      courses: 2,
       category: 'cooking'
     },
     {
@@ -67,8 +66,8 @@ const Learn = () => {
       name: 'Sensei Sam',
       avatar: '🥋',
       specialty: 'Physical Training',
-      description: 'Martial arts, fitness, and mind-body connection',
-      courses: 1,
+      description: 'Martial arts, fitness, and mind-body discipline mastery',
+      courses: 2,
       category: 'physical'
     },
     {
@@ -76,8 +75,8 @@ const Learn = () => {
       name: 'Language Luna',
       avatar: '🗣️',
       specialty: 'Languages',
-      description: 'Multilingual communication and cultural studies',
-      courses: 1,
+      description: 'Multilingual communication and cultural immersion',
+      courses: 2,
       category: 'language'
     }
   ];
@@ -91,7 +90,7 @@ const Learn = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-20 bg-black text-white">
       {/* Header */}
       <section className="py-16 hero-gradient">
         <div className="container mx-auto px-4">
@@ -99,7 +98,7 @@ const Learn = () => {
             <h1 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
               Your AI Learning Journey
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+            <p className="text-lg text-gray-300 mb-8">
               Continue your progress with personalized AI tutors and discover new skills
             </p>
           </div>
@@ -116,10 +115,10 @@ const Learn = () => {
               { label: 'AI Certificates Earned', value: '8', icon: '🏆' },
               { label: 'Learning Streak', value: '23', icon: '🔥' }
             ].map((stat, index) => (
-              <div key={index} className="glass-card text-center">
-                <div className="text-2xl mb-2">{stat.icon}</div>
-                <div className="text-2xl font-bold gradient-text mb-1">{stat.value}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
+              <div key={index} className="ai-card text-center">
+                <div className="text-3xl mb-3">{stat.icon}</div>
+                <div className="text-3xl font-bold gradient-text mb-2">{stat.value}</div>
+                <div className="text-sm text-gray-400">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -135,27 +134,27 @@ const Learn = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {aiPersonas.map((persona) => (
-              <div key={persona.id} className="glass-card p-6">
-                <div className="text-center mb-4">
-                  <div className="text-4xl mb-2">{persona.avatar}</div>
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+              <div key={persona.id} className="ai-card">
+                <div className="text-center mb-6">
+                  <div className="text-5xl mb-4">{persona.avatar}</div>
+                  <h3 className="text-xl font-bold text-white mb-2">
                     {persona.name}
                   </h3>
-                  <p className="text-primary-500 font-medium">{persona.specialty}</p>
+                  <p className="text-blue-400 font-medium">{persona.specialty}</p>
                 </div>
                 
-                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 text-center">
+                <p className="text-gray-400 text-sm mb-6 text-center leading-relaxed">
                   {persona.description}
                 </p>
                 
-                <div className="text-center mb-4">
-                  <span className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white px-3 py-1 rounded-full text-sm">
+                <div className="text-center mb-6">
+                  <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-full text-sm">
                     {persona.courses} Course{persona.courses > 1 ? 's' : ''} Available
                   </span>
                 </div>
                 
                 <Button 
-                  className="w-full bg-gradient-to-r from-primary-500 to-secondary-500"
+                  className="w-full ai-button py-3"
                   onClick={() => handleExplorePersona(persona.category)}
                 >
                   Start Learning
@@ -173,7 +172,7 @@ const Learn = () => {
             <h2 className="text-3xl font-bold gradient-text">
               Continue Learning with AI
             </h2>
-            <Button variant="outline" className="glass border-white/30 hover:bg-white/10">
+            <Button variant="outline" className="border-gray-700 text-white hover:bg-gray-800">
               View All Progress
             </Button>
           </div>
@@ -181,33 +180,33 @@ const Learn = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             {enrolledCourses.map((course) => (
               <div key={course.id} className="relative">
-                <div className="glass-card p-6">
+                <div className="ai-card">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl">{course.instructor.split(' ').pop()}</span>
-                    <span className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    <span className="text-3xl">{course.instructor.split(' ').pop()}</span>
+                    <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium">
                       AI Tutor
                     </span>
                   </div>
                   
-                  <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                  <h3 className="text-xl font-bold text-white mb-3">
                     {course.title}
                   </h3>
                   
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-bold gradient-text">{course.price}</span>
-                    <span className="text-sm text-gray-500">{course.duration}</span>
+                    <span className="text-sm text-gray-400">{course.duration}</span>
                   </div>
                   
-                  <div className="flex items-center mb-4 text-sm text-gray-600 dark:text-gray-400">
-                    <span>⭐ {course.rating}</span>
+                  <div className="flex items-center mb-6 text-sm text-gray-400">
+                    <span className="text-yellow-400">⭐ {course.rating}</span>
                     <span className="mx-2">•</span>
                     <span>{course.students} students</span>
                     <span className="mx-2">•</span>
-                    <span>{course.level}</span>
+                    <span className="bg-gray-800 px-2 py-1 rounded text-xs">{course.level}</span>
                   </div>
                   
                   <Button 
-                    className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 mb-4"
+                    className="w-full ai-button mb-4 py-3"
                     onClick={() => handleStartAITutor(course.id)}
                   >
                     Continue with AI Tutor
@@ -215,14 +214,14 @@ const Learn = () => {
                 </div>
                 
                 {/* Progress Bar */}
-                <div className="mt-4 glass rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Progress</span>
-                    <span className="text-sm font-medium">{course.progress}%</span>
+                <div className="mt-4 ai-card">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm text-gray-400">Progress</span>
+                    <span className="text-sm font-medium text-white">{course.progress}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="w-full bg-gray-800 rounded-full h-3">
                     <div 
-                      className="bg-gradient-to-r from-primary-500 to-secondary-500 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300"
                       style={{ width: `${course.progress}%` }}
                     ></div>
                   </div>
@@ -232,8 +231,8 @@ const Learn = () => {
           </div>
 
           {/* Today's AI Study Plan */}
-          <div className="glass-card mb-12">
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
+          <div className="ai-card mb-12">
+            <h3 className="text-2xl font-bold text-white mb-6">
               Today's AI Learning Plan
             </h3>
             <div className="space-y-4">
@@ -242,29 +241,29 @@ const Learn = () => {
                 { course: 'Physics Mastery', lesson: 'Quantum Mechanics with Professor Pine', duration: '30 min', tutor: '👨‍🔬', completed: true },
                 { course: 'React Development', lesson: 'Testing Components with AI', duration: '35 min', tutor: '🧑‍💻', completed: false }
               ].map((item, index) => (
-                <div key={index} className={`flex items-center justify-between p-4 rounded-lg glass ${item.completed ? 'opacity-60' : ''}`}>
+                <div key={index} className={`flex items-center justify-between p-4 rounded-lg bg-gray-900 border border-gray-800 ${item.completed ? 'opacity-60' : ''}`}>
                   <div className="flex items-center space-x-4">
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                       item.completed 
-                        ? 'bg-secondary-500 border-secondary-500 text-white' 
-                        : 'border-gray-300 dark:border-gray-600'
+                        ? 'bg-blue-500 border-blue-500 text-white' 
+                        : 'border-gray-600'
                     }`}>
                       {item.completed && '✓'}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg">{item.tutor}</span>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">{item.tutor}</span>
                       <div>
-                        <div className="font-medium text-gray-800 dark:text-white">
+                        <div className="font-medium text-white">
                           {item.lesson}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="text-sm text-gray-400">
                           {item.course} • {item.duration}
                         </div>
                       </div>
                     </div>
                   </div>
                   {!item.completed && (
-                    <Button size="sm" className="bg-gradient-to-r from-primary-500 to-secondary-500">
+                    <Button size="sm" className="ai-button">
                       Start with AI
                     </Button>
                   )}

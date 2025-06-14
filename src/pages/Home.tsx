@@ -2,15 +2,14 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
 import UserProfile from '@/components/UserProfile';
 
 const Home = () => {
   const featuredCourses = [
     {
-      title: "Complete React Development Course",
-      instructor: "Sarah Johnson",
+      title: "Complete React Development with AI Tutor",
+      instructor: "Code Master 🧑‍💻",
       price: "$99",
       level: "Intermediate" as const,
       rating: 4.8,
@@ -18,56 +17,51 @@ const Home = () => {
       duration: "8 weeks"
     },
     {
-      title: "Python for Data Science",
-      instructor: "Dr. Michael Chen",
-      price: "$79",
+      title: "Physics & Chemistry Mastery",
+      instructor: "Professor Pine 👨‍🔬",
+      price: "$129",
       level: "Beginner" as const,
       rating: 4.9,
-      students: 1876,
-      duration: "6 weeks"
+      students: 1203,
+      duration: "10 weeks"
     },
     {
-      title: "Advanced UI/UX Design",
-      instructor: "Emma Rodriguez",
-      price: "$129",
+      title: "Advanced Culinary Arts",
+      instructor: "Chef Charlie 👨‍🍳",
+      price: "$149",
       level: "Advanced" as const,
       rating: 4.7,
-      students: 945,
-      duration: "10 weeks"
+      students: 892,
+      duration: "8 weeks"
     }
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-black text-white">
       {/* Hero Section */}
       <section className="pt-20 pb-16 hero-gradient">
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-4xl mx-auto animate-fade-in">
             <h1 className="text-4xl md:text-6xl font-bold mb-6 gradient-text leading-tight">
-              Learn Anything, Teach Everything,<br />
-              <span className="text-3xl md:text-5xl">Earn NFT Certificates</span>
+              Learn with AI Tutors,<br />
+              <span className="text-3xl md:text-5xl">Master Any Skill</span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-              Join the future of education where knowledge has no boundaries and achievements are permanently verified on the blockchain.
+            <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto">
+              Experience the future of education with personalized AI tutors that adapt to your learning style and provide real-time guidance.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
               <Link to="/courses">
-                <Button size="lg" className="bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 text-white px-8 py-4 text-lg font-medium animate-glow">
-                  Start Learning Today
+                <Button size="lg" className="ai-button px-12 py-4 text-lg font-medium animate-glow">
+                  Start Learning with AI
                 </Button>
               </Link>
-              <Link to="/teach">
-                <Button size="lg" variant="outline" className="glass border-white/30 px-8 py-4 text-lg font-medium hover:bg-white/10">
-                  Become an Instructor
+              <Link to="/learn">
+                <Button size="lg" variant="outline" className="border-gray-700 text-white px-12 py-4 text-lg font-medium hover:bg-gray-800">
+                  View My Progress
                 </Button>
               </Link>
-            </div>
-
-            {/* Search Bar */}
-            <div className="animate-slide-up">
-              <SearchBar onSearch={(query) => console.log('Searching for:', query)} />
             </div>
           </div>
         </div>
@@ -78,15 +72,46 @@ const Home = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
             {[
+              { label: 'AI Tutors', value: '5', icon: '🤖' },
               { label: 'Active Learners', value: '50K+', icon: '👥' },
-              { label: 'Expert Instructors', value: '1.2K+', icon: '🎓' },
-              { label: 'Courses Available', value: '15K+', icon: '📚' },
-              { label: 'NFT Certificates', value: '25K+', icon: '🏆' }
+              { label: 'AI-Powered Courses', value: '10+', icon: '📚' },
+              { label: 'Success Rate', value: '97%', icon: '🏆' }
             ].map((stat, index) => (
-              <div key={index} className="text-center glass-card animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <div className="text-3xl mb-2">{stat.icon}</div>
-                <div className="text-2xl md:text-3xl font-bold gradient-text mb-1">{stat.value}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
+              <div key={index} className="text-center ai-card animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                <div className="text-4xl mb-3">{stat.icon}</div>
+                <div className="text-3xl md:text-4xl font-bold gradient-text mb-2">{stat.value}</div>
+                <div className="text-sm text-gray-400">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* AI Personas */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-4">
+              Meet Your AI Tutors
+            </h2>
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto">
+              Each AI tutor is specialized in their field with unique personalities and teaching styles
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {[
+              { name: 'Code Master', avatar: '🧑‍💻', specialty: 'Programming & Tech', desc: 'Expert in modern development' },
+              { name: 'Professor Pine', avatar: '👨‍🔬', specialty: 'Sciences', desc: 'Research and scientific methods' },
+              { name: 'Chef Charlie', avatar: '👨‍🍳', specialty: 'Culinary Arts', desc: 'French cuisine mastery' },
+              { name: 'Sensei Sam', avatar: '🥋', specialty: 'Physical Training', desc: 'Martial arts & fitness' },
+              { name: 'Language Luna', avatar: '🗣️', specialty: 'Languages', desc: 'Multilingual communication' }
+            ].map((tutor, index) => (
+              <div key={index} className="ai-card text-center animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                <div className="text-5xl mb-4">{tutor.avatar}</div>
+                <h3 className="text-xl font-bold text-white mb-2">{tutor.name}</h3>
+                <p className="text-blue-400 font-medium mb-3">{tutor.specialty}</p>
+                <p className="text-gray-400 text-sm">{tutor.desc}</p>
               </div>
             ))}
           </div>
@@ -98,24 +123,50 @@ const Home = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-4">
-              Featured Courses
+              Popular AI-Powered Courses
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Discover our most popular courses taught by industry experts
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto">
+              Start learning with our most popular AI-guided courses
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {featuredCourses.map((course, index) => (
               <div key={index} className="animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <CourseCard {...course} />
+                <div className="ai-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-3xl">{course.instructor.split(' ').pop()}</span>
+                    <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm">
+                      AI Tutor
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-white mb-3">{course.title}</h3>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xl font-bold gradient-text">{course.price}</span>
+                    <span className="text-sm text-gray-400">{course.duration}</span>
+                  </div>
+                  
+                  <div className="flex items-center mb-6 text-sm text-gray-400">
+                    <span className="text-yellow-400">⭐ {course.rating}</span>
+                    <span className="mx-2">•</span>
+                    <span>{course.students} students</span>
+                    <span className="mx-2">•</span>
+                    <span className="bg-gray-800 px-2 py-1 rounded text-xs">{course.level}</span>
+                  </div>
+                  
+                  <Button className="w-full ai-button py-3">
+                    Start with AI Tutor
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
 
           <div className="text-center mt-12">
             <Link to="/courses">
-              <Button size="lg" variant="outline" className="glass border-white/30 hover:bg-white/10">
+              <Button size="lg" variant="outline" className="border-gray-700 text-white hover:bg-gray-800 px-8 py-3">
                 View All Courses
               </Button>
             </Link>
@@ -123,48 +174,25 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Top Instructors */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-4">
-              Meet Our Top Instructors
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Learn from industry leaders and passionate educators
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="animate-slide-up">
-              <UserProfile showActions={false} />
-            </div>
-            <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-              <UserProfile showActions={false} />
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-16 hero-gradient">
         <div className="container mx-auto px-4 text-center">
-          <div className="max-w-3xl mx-auto glass-card">
+          <div className="max-w-3xl mx-auto ai-card">
             <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-4">
-              Ready to Transform Your Future?
+              Ready to Transform Your Learning?
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-              Join thousands of learners earning verified certificates and building meaningful careers
+            <p className="text-lg text-gray-300 mb-8">
+              Join thousands of learners already experiencing the future of education with AI tutors
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/courses">
-                <Button size="lg" className="bg-gradient-to-r from-primary-500 to-secondary-500 hover:from-primary-600 hover:to-secondary-600 text-white px-8 py-4">
-                  Explore Courses
+                <Button size="lg" className="ai-button px-8 py-4">
+                  Start Learning Now
                 </Button>
               </Link>
-              <Link to="/teach">
-                <Button size="lg" variant="outline" className="glass border-white/30 px-8 py-4 hover:bg-white/10">
-                  Start Teaching
+              <Link to="/learn">
+                <Button size="lg" variant="outline" className="border-gray-700 text-white px-8 py-4 hover:bg-gray-800">
+                  View Learning Dashboard
                 </Button>
               </Link>
             </div>

@@ -10,7 +10,6 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Courses from "./pages/Courses";
 import Learn from "./pages/Learn";
-import Teach from "./pages/Teach";
 import Profile from "./pages/Profile";
 import TutorSession from "./pages/TutorSession";
 import NotFound from "./pages/NotFound";
@@ -24,14 +23,13 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="min-h-screen">
+          <div className="min-h-screen bg-black">
             <Navbar />
             <main>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/courses" element={<Courses />} />
                 <Route path="/learn" element={<Learn />} />
-                <Route path="/teach" element={<Teach />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/tutor/:courseId" element={<TutorSession />} />
                 <Route path="/tutor/:courseId/:lessonId" element={<TutorSession />} />

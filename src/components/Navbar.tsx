@@ -23,7 +23,6 @@ const Navbar = () => {
     { name: "Home", href: "/" },
     { name: "Courses", href: "/courses" },
     { name: "Learn", href: "/learn" },
-    { name: "Teach", href: "/teach" },
   ];
 
   const isActivePath = (path: string) => {
@@ -39,13 +38,12 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50">
+    <nav className="fixed top-0 w-full bg-black/95 backdrop-blur-sm border-b border-gray-800 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-bold text-blue-600">SkillSwap</span>
-              <span className="text-2xl font-bold text-gray-900 ml-1">Academy</span>
+              <span className="text-2xl font-bold gradient-text">AI Academy</span>
             </Link>
           </div>
 
@@ -57,8 +55,8 @@ const Navbar = () => {
                 to={item.href}
                 className={`${
                   isActivePath(item.href)
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-700 hover:text-blue-600"
+                    ? "text-blue-400 border-b-2 border-blue-400"
+                    : "text-gray-300 hover:text-blue-400"
                 } px-3 py-2 text-sm font-medium transition-colors duration-200`}
               >
                 {item.name}
@@ -69,34 +67,34 @@ const Navbar = () => {
           {/* Desktop Auth */}
           <div className="hidden md:flex items-center space-x-4">
             {loading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-gray-800 animate-pulse" />
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-gray-800 text-white">
                         {user.email?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent className="w-56 bg-gray-900 border-gray-800 text-white" align="end" forceMount>
                   <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center">
+                    <Link to="/profile" className="flex items-center text-white hover:bg-gray-800">
                       <User className="mr-2 h-4 w-4" />
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem onClick={handleSignOut} className="text-white hover:bg-gray-800">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={() => setShowAuthModal(true)}>
+              <Button onClick={() => setShowAuthModal(true)} className="ai-button">
                 Sign In
               </Button>
             )}
@@ -106,7 +104,7 @@ const Navbar = () => {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-blue-600 p-2"
+              className="text-gray-300 hover:text-blue-400 p-2"
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -116,7 +114,7 @@ const Navbar = () => {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
+        <div className="md:hidden bg-gray-900 border-t border-gray-800">
           <div className="px-2 pt-2 pb-3 space-y-1">
             {navigation.map((item) => (
               <Link
@@ -125,8 +123,8 @@ const Navbar = () => {
                 onClick={() => setIsMenuOpen(false)}
                 className={`${
                   isActivePath(item.href)
-                    ? "text-blue-600 bg-blue-50"
-                    : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"
+                    ? "text-blue-400 bg-gray-800"
+                    : "text-gray-300 hover:text-blue-400 hover:bg-gray-800"
                 } block px-3 py-2 text-base font-medium rounded-md transition-colors duration-200`}
               >
                 {item.name}
@@ -134,13 +132,13 @@ const Navbar = () => {
             ))}
             
             {/* Mobile Auth */}
-            <div className="pt-4 pb-2 border-t border-gray-200">
+            <div className="pt-4 pb-2 border-t border-gray-800">
               {user ? (
                 <div className="space-y-1">
                   <Link
                     to="/profile"
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                    className="flex items-center px-3 py-2 text-base font-medium text-gray-300 hover:text-blue-400 hover:bg-gray-800 rounded-md"
                   >
                     <User className="mr-2 h-4 w-4" />
                     Profile
@@ -150,7 +148,7 @@ const Navbar = () => {
                       handleSignOut();
                       setIsMenuOpen(false);
                     }}
-                    className="flex items-center w-full px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                    className="flex items-center w-full px-3 py-2 text-base font-medium text-gray-300 hover:text-blue-400 hover:bg-gray-800 rounded-md"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out
@@ -162,7 +160,7 @@ const Navbar = () => {
                     setShowAuthModal(true);
                     setIsMenuOpen(false);
                   }}
-                  className="w-full"
+                  className="w-full ai-button"
                 >
                   Sign In
                 </Button>

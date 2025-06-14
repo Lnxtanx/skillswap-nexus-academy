@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,7 +111,6 @@ const AITutor: React.FC<AITutorProps> = ({
     try {
       setIsLoading(true);
       
-      // Create session in our database first
       const sessionData = await createSession({
         replicaId: selectedPersona.tavusReplicaId,
         userId: user?.id,
@@ -121,21 +119,18 @@ const AITutor: React.FC<AITutorProps> = ({
         personaId: selectedPersona.id
       });
 
-      // Initialize Tavus session with API key
       const tavusConfig = {
         apiKey: TAVUS_API_KEY,
         replicaId: selectedPersona.tavusReplicaId,
         conversationId: sessionData?.id || 'temp-session',
         properties: {
-          max_session_length: 3600, // 1 hour
+          max_session_length: 3600,
           language: 'en'
         }
       };
 
       console.log('Initializing Tavus session with config:', tavusConfig);
       
-      // For now, simulate Tavus initialization
-      // In production, you would use the actual Tavus SDK here
       setTavusSession(tavusConfig);
       setIsVideoActive(true);
       
@@ -144,7 +139,6 @@ const AITutor: React.FC<AITutorProps> = ({
         description: `${selectedPersona.name} is ready to help you learn!`,
       });
 
-      // Add initial greeting message
       const greetingMessage = {
         id: Date.now(),
         type: 'ai',
@@ -305,14 +299,14 @@ const AITutor: React.FC<AITutorProps> = ({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
       {/* Video Interface */}
       <div className="lg:col-span-2 space-y-4">
-        <Card>
+        <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <span className="text-2xl">{selectedPersona.avatar}</span>
                 <div>
-                  <CardTitle>{selectedPersona.name}</CardTitle>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <CardTitle className="text-white">{selectedPersona.name}</CardTitle>
+                  <p className="text-sm text-gray-400">
                     {selectedPersona.description}
                   </p>
                 </div>
@@ -337,24 +331,24 @@ const AITutor: React.FC<AITutorProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="aspect-video bg-gray-900 rounded-lg mb-4 relative overflow-hidden">
+            <div className="aspect-video bg-gray-900 rounded-lg mb-4 relative overflow-hidden border border-gray-800">
               {isVideoActive && tavusSession ? (
                 <div className="flex items-center justify-center h-full text-white bg-gradient-to-br from-gray-800 to-gray-900">
                   <div className="text-center">
                     <span className="text-8xl mb-4 block animate-pulse">{selectedPersona.avatar}</span>
-                    <p className="text-xl mb-2">AI Video Stream Active</p>
-                    <p className="text-sm opacity-75">Powered by Tavus</p>
+                    <p className="text-xl mb-2 text-white">AI Video Stream Active</p>
+                    <p className="text-sm opacity-75 text-gray-300">Powered by Tavus</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-white">
                   <div className="text-center">
                     <span className="text-6xl mb-4 block">{selectedPersona.avatar}</span>
-                    <p className="text-lg mb-2">{selectedPersona.greeting}</p>
+                    <p className="text-lg mb-2 text-white">{selectedPersona.greeting}</p>
                     <Button 
                       onClick={initializeTavusSession}
                       disabled={isLoading}
-                      className="bg-primary-500 hover:bg-primary-600"
+                      className="bg-primary-500 hover:bg-primary-600 text-white"
                     >
                       {isLoading ? 'Connecting...' : 'Start AI Session'}
                     </Button>
@@ -363,13 +357,13 @@ const AITutor: React.FC<AITutorProps> = ({
               )}
             </div>
 
-            {/* Controls */}
             <div className="flex items-center justify-center space-x-4">
               <Button
                 variant={isMicActive ? "default" : "outline"}
                 size="sm"
                 onClick={toggleMicrophone}
                 disabled={!isVideoActive}
+                className="border-gray-700 text-white hover:bg-gray-800"
               >
                 {isMicActive ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
               </Button>
@@ -378,6 +372,7 @@ const AITutor: React.FC<AITutorProps> = ({
                 variant={isVideoActive ? "default" : "outline"}
                 size="sm"
                 onClick={() => setIsVideoActive(!isVideoActive)}
+                className="border-gray-700 text-white hover:bg-gray-800"
               >
                 {isVideoActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
               </Button>
@@ -387,6 +382,7 @@ const AITutor: React.FC<AITutorProps> = ({
                 size="sm"
                 onClick={toggleScreenShare}
                 disabled={!isVideoActive}
+                className="border-gray-700 text-white hover:bg-gray-800"
               >
                 <Share className="w-4 h-4" />
               </Button>
@@ -396,6 +392,7 @@ const AITutor: React.FC<AITutorProps> = ({
                 size="sm"
                 onClick={toggleRecording}
                 disabled={!isVideoActive}
+                className="border-gray-700 text-white hover:bg-gray-800"
               >
                 {isRecording ? <Pause className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               </Button>
@@ -416,9 +413,9 @@ const AITutor: React.FC<AITutorProps> = ({
 
       {/* Chat Interface */}
       <div className="space-y-4">
-        <Card>
+        <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <CardTitle>Conversation</CardTitle>
+            <CardTitle className="text-white">Conversation</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64 overflow-y-auto mb-4 space-y-3">
@@ -427,18 +424,18 @@ const AITutor: React.FC<AITutorProps> = ({
                   key={message.id}
                   className={`p-3 rounded-lg ${
                     message.type === 'user'
-                      ? 'bg-primary-100 dark:bg-primary-900 ml-4'
-                      : 'bg-gray-100 dark:bg-gray-800 mr-4'
+                      ? 'bg-primary-900 text-white ml-4'
+                      : 'bg-gray-800 text-white mr-4'
                   }`}
                 >
                   <p className="text-sm">{message.content}</p>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-400">
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
               ))}
               {conversationHistory.length === 0 && (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-400 py-8">
                   <p>Start a conversation with your AI tutor!</p>
                 </div>
               )}
@@ -450,7 +447,7 @@ const AITutor: React.FC<AITutorProps> = ({
                 value={currentMessage}
                 onChange={(e) => setCurrentMessage(e.target.value)}
                 placeholder="Ask your AI tutor..."
-                className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage(currentMessage)}
                 disabled={!isVideoActive}
               />
@@ -458,6 +455,7 @@ const AITutor: React.FC<AITutorProps> = ({
                 onClick={() => sendMessage(currentMessage)}
                 disabled={!currentMessage.trim() || !isVideoActive}
                 size="sm"
+                className="bg-primary-500 hover:bg-primary-600 text-white"
               >
                 Send
               </Button>
@@ -465,27 +463,26 @@ const AITutor: React.FC<AITutorProps> = ({
           </CardContent>
         </Card>
 
-        {/* Persona Info */}
-        <Card>
+        <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <CardTitle>Your AI Tutor</CardTitle>
+            <CardTitle className="text-white">Your AI Tutor</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <span className="text-lg">{selectedPersona.avatar}</span>
-                <span className="font-medium">{selectedPersona.name}</span>
+                <span className="font-medium text-white">{selectedPersona.name}</span>
               </div>
               
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-400">
                 {selectedPersona.personality}
               </p>
               
               <div>
-                <p className="text-sm font-medium mb-2">Specialties:</p>
+                <p className="text-sm font-medium mb-2 text-white">Specialties:</p>
                 <div className="flex flex-wrap gap-1">
                   {selectedPersona.specialties.map((specialty) => (
-                    <Badge key={specialty} variant="secondary" className="text-xs">
+                    <Badge key={specialty} variant="secondary" className="text-xs bg-gray-800 text-gray-300">
                       {specialty}
                     </Badge>
                   ))}
@@ -493,8 +490,8 @@ const AITutor: React.FC<AITutorProps> = ({
               </div>
               
               {tavusSession && (
-                <div className="mt-4 p-3 bg-gradient-to-r from-primary-500/10 to-secondary-500/10 rounded-lg">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                <div className="mt-4 p-3 bg-gradient-to-r from-primary-500/10 to-secondary-500/10 rounded-lg border border-gray-800">
+                  <p className="text-xs text-gray-400">
                     🔗 Connected to Tavus AI Video
                   </p>
                 </div>
