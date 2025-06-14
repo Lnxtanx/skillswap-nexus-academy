@@ -81,7 +81,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
           particle.y += particle.vy;
           
           // Minimal gravity for natural movement
-          particle.vy += 0.008;
+          particle.vy += 0.005;
           
           // Strong center attraction to keep particles in play
           const centerX = canvas.width / 2;
@@ -91,15 +91,15 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
           const distance = Math.sqrt(dx * dx + dy * dy);
           
           if (distance > 120) {
-            particle.vx += (dx / distance) * 0.02;
-            particle.vy += (dy / distance) * 0.02;
+            particle.vx += (dx / distance) * 0.015;
+            particle.vy += (dy / distance) * 0.015;
           }
         }
         return particle;
       }).filter(particle => {
         // Very generous boundaries to keep particles longer
-        if (particle.x < -400 || particle.x > canvas.width + 400 || 
-            particle.y < -400 || particle.y > canvas.height + 400) {
+        if (particle.x < -600 || particle.x > canvas.width + 600 || 
+            particle.y < -600 || particle.y > canvas.height + 600) {
           if (!particle.cut && particle.color === prev.targetColor && 
               checkDirectionMatch(particle, prev.targetDirection, canvas)) {
             return false; // Will increment missed count
@@ -110,7 +110,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
       });
 
       // MASSIVE particle generation - maintain very high count
-      const targetCount = levelConfig.particleCount;
+      const targetCount = levelConfig.particleCount * 3; // Triple the base count
       const currentCount = updatedParticles.length;
       const particlesToAdd = Math.max(0, targetCount - currentCount);
       
@@ -120,7 +120,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
       }
 
       // Add continuous stream of extra particles for abundance
-      const extraParticles = Math.floor(Math.random() * 8) + 5; // 5-12 extra particles per frame
+      const extraParticles = Math.floor(Math.random() * 15) + 10; // 10-24 extra particles per frame
       for (let i = 0; i < extraParticles; i++) {
         if (updatedParticles.length < targetCount * 2) { // Allow up to 2x target count
           updatedParticles.push(createParticle(canvas, levelConfig));
@@ -151,16 +151,16 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
     const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
     // Enhanced mouse trail generation
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       setGameState(prev => ({
         ...prev,
         mouseTrails: [
-          ...prev.mouseTrails.slice(-50),
+          ...prev.mouseTrails.slice(-60),
           {
-            x: mouseX + (Math.random() - 0.5) * 15,
-            y: mouseY + (Math.random() - 0.5) * 15,
+            x: mouseX + (Math.random() - 0.5) * 20,
+            y: mouseY + (Math.random() - 0.5) * 20,
             color: `hsl(${Date.now() % 360}, 100%, 60%)`,
-            life: 1.0
+            life: 1.2
           }
         ]
       }));
@@ -168,15 +168,14 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
 
     if (!gameState.isPlaying) return;
 
-    setGameState(prev => ({
-      ...prev,
-      particles: prev.particles.map(particle => {
+    setGameState(prev => {
+      const updatedParticles = prev.particles.map(particle => {
         if (!particle.cut) {
           const distance = Math.sqrt(
             Math.pow(mouseX - particle.x, 2) + Math.pow(mouseY - particle.y, 2)
           );
 
-          if (distance < particle.size + 25) {
+          if (distance < particle.size + 35) {
             particle.cut = true;
             
             const isValidTarget = particle.color === prev.targetColor && 
@@ -184,12 +183,12 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
             
             if (isValidTarget) {
               // Add explosion effect
-              for (let i = 0; i < 40; i++) {
+              for (let i = 0; i < 50; i++) {
                 const explosionTrail = {
-                  x: particle.x + (Math.random() - 0.5) * 120,
-                  y: particle.y + (Math.random() - 0.5) * 120,
+                  x: particle.x + (Math.random() - 0.5) * 150,
+                  y: particle.y + (Math.random() - 0.5) * 150,
                   color: particle.color,
-                  life: 1.5
+                  life: 2.0
                 };
                 prev.mouseTrails.push(explosionTrail);
               }
@@ -197,19 +196,26 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
               return {
                 ...prev,
                 score: prev.score + 10,
-                particlesCut: prev.particlesCut + 1
+                particlesCut: prev.particlesCut + 1,
+                particles: updatedParticles
               };
             } else {
               return {
                 ...prev,
-                score: Math.max(0, prev.score - 3)
+                score: Math.max(0, prev.score - 3),
+                particles: updatedParticles
               };
             }
           }
         }
-        return prev;
-      })
-    }));
+        return particle;
+      });
+      
+      return {
+        ...prev,
+        particles: updatedParticles
+      };
+    });
   }, [gameState.isPlaying, gameState.targetColor, gameState.targetDirection]);
 
   // Timer effect
@@ -229,7 +235,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
     if (gameState.isPlaying && gameState.targetColor) {
       const interval = setInterval(() => {
         generateNewTarget();
-      }, 8000);
+      }, 6000); // Faster target changes
       return () => clearInterval(interval);
     }
   }, [gameState.isPlaying, generateNewTarget, gameState.targetColor]);
@@ -253,7 +259,8 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
       const initialParticles = [];
       const canvas = canvasRef.current?.getCanvas();
       if (canvas) {
-        for (let i = 0; i < levelConfig.particleCount; i++) {
+        const initialCount = levelConfig.particleCount * 2; // Double initial count
+        for (let i = 0; i < initialCount; i++) {
           initialParticles.push(createParticle(canvas, levelConfig));
         }
         setGameState(prev => ({ ...prev, particles: initialParticles }));

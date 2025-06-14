@@ -51,27 +51,27 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     switch (side) {
       case 0: // top
         x = Math.random() * canvas.width;
-        y = -100;
-        vx = (centerX - x) * 0.001 + (Math.random() - 0.5) * 0.4;
-        vy = Math.random() * 0.7 + 1.2;
+        y = -150;
+        vx = (centerX - x) * 0.001 + (Math.random() - 0.5) * 0.3;
+        vy = Math.random() * 0.5 + 0.8;
         break;
       case 1: // right
-        x = canvas.width + 100;
+        x = canvas.width + 150;
         y = Math.random() * canvas.height;
-        vx = -(Math.random() * 0.7 + 1.2);
-        vy = (centerY - y) * 0.001 + (Math.random() - 0.5) * 0.4;
+        vx = -(Math.random() * 0.5 + 0.8);
+        vy = (centerY - y) * 0.001 + (Math.random() - 0.5) * 0.3;
         break;
       case 2: // bottom
         x = Math.random() * canvas.width;
-        y = canvas.height + 100;
-        vx = (centerX - x) * 0.001 + (Math.random() - 0.5) * 0.4;
-        vy = -(Math.random() * 0.7 + 1.2);
+        y = canvas.height + 150;
+        vx = (centerX - x) * 0.001 + (Math.random() - 0.5) * 0.3;
+        vy = -(Math.random() * 0.5 + 0.8);
         break;
       default: // left
-        x = -100;
+        x = -150;
         y = Math.random() * canvas.height;
-        vx = Math.random() * 0.7 + 1.2;
-        vy = (centerY - y) * 0.001 + (Math.random() - 0.5) * 0.4;
+        vx = Math.random() * 0.5 + 0.8;
+        vy = (centerY - y) * 0.001 + (Math.random() - 0.5) * 0.3;
     }
 
     const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
@@ -86,7 +86,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
       vy: vy * levelConfig.speed,
       code,
       category,
-      size: 70,
+      size: 80,
       cut: false
     };
   }, [levelConfig.speed]);
@@ -129,22 +129,22 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
       // Update mouse trails
       const updatedTrails = prev.mouseTrails.map(trail => ({
         ...trail,
-        life: trail.life - 0.015
+        life: trail.life - 0.012
       })).filter(trail => trail.life > 0);
 
       // Enhanced trail rendering
       updatedTrails.forEach((trail) => {
         ctx.globalAlpha = trail.life;
         
-        for (let i = 0; i < 4; i++) {
-          const offset = i * 4;
-          const size = (10 - i * 2) * trail.life;
+        for (let i = 0; i < 6; i++) {
+          const offset = i * 3;
+          const size = (12 - i * 2) * trail.life;
           const hue = (Date.now() * 0.1 + offset + 180) % 360;
-          ctx.fillStyle = `hsl(${hue}, 100%, ${70 + i * 5}%)`;
+          ctx.fillStyle = `hsl(${hue}, 100%, ${70 + i * 4}%)`;
           ctx.beginPath();
           ctx.arc(
-            trail.x + Math.sin(Date.now() * 0.01 + offset) * 3, 
-            trail.y + Math.cos(Date.now() * 0.01 + offset) * 3, 
+            trail.x + Math.sin(Date.now() * 0.008 + offset) * 4, 
+            trail.y + Math.cos(Date.now() * 0.008 + offset) * 4, 
             size, 0, 2 * Math.PI
           );
           ctx.fill();
@@ -158,8 +158,8 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
           particle.x += particle.vx;
           particle.y += particle.vy;
           
-          // Minimal gravity
-          particle.vy += 0.008;
+          // Very minimal gravity
+          particle.vy += 0.004;
           
           // Strong center attraction
           const centerX = canvas.width / 2;
@@ -168,9 +168,9 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
           const dy = centerY - particle.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          if (distance > 120) {
-            particle.vx += (dx / distance) * 0.025;
-            particle.vy += (dy / distance) * 0.025;
+          if (distance > 140) {
+            particle.vx += (dx / distance) * 0.02;
+            particle.vy += (dy / distance) * 0.02;
           }
         }
 
@@ -181,36 +181,36 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         
         if (isValidTarget && !particle.cut) {
           ctx.shadowColor = '#00ff00';
-          ctx.shadowBlur = 30;
+          ctx.shadowBlur = 35;
           
-          const pulseSize = Math.sin(Date.now() * 0.01) * 10 + 15;
-          ctx.fillStyle = '#00ff0040';
-          ctx.fillRect(particle.x - particle.size - pulseSize, particle.y - 20 - pulseSize/2, 
-                      particle.size * 2 + pulseSize*2, 40 + pulseSize);
+          const pulseSize = Math.sin(Date.now() * 0.008) * 12 + 18;
+          ctx.fillStyle = '#00ff0050';
+          ctx.fillRect(particle.x - particle.size - pulseSize, particle.y - 25 - pulseSize/2, 
+                      particle.size * 2 + pulseSize*2, 50 + pulseSize);
         }
         
-        // Background
-        ctx.fillStyle = particle.cut ? '#333' : (isValidTarget ? '#0066cc' : '#4a5568');
-        ctx.fillRect(particle.x - particle.size, particle.y - 15, particle.size * 2, 30);
+        // Background with enhanced styling
+        ctx.fillStyle = particle.cut ? '#444' : (isValidTarget ? '#0088ff' : '#556b7d');
+        ctx.fillRect(particle.x - particle.size, particle.y - 20, particle.size * 2, 40);
         
         // Border with enhanced glow for target
-        ctx.strokeStyle = isValidTarget ? '#00ff00' : '#9ca3af';
-        ctx.lineWidth = isValidTarget ? 6 : 1;
-        ctx.strokeRect(particle.x - particle.size, particle.y - 15, particle.size * 2, 30);
+        ctx.strokeStyle = isValidTarget ? '#00ff00' : '#aabbcc';
+        ctx.lineWidth = isValidTarget ? 8 : 2;
+        ctx.strokeRect(particle.x - particle.size, particle.y - 20, particle.size * 2, 40);
         
-        // Text
-        ctx.fillStyle = particle.cut ? '#666' : '#ffffff';
-        ctx.font = '12px monospace';
+        // Text with better readability
+        ctx.fillStyle = particle.cut ? '#777' : '#ffffff';
+        ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(particle.code, particle.x, particle.y + 3);
+        ctx.fillText(particle.code, particle.x, particle.y + 4);
         
         ctx.shadowBlur = 0;
 
         return particle;
       }).filter(particle => {
         // Very generous boundaries
-        if (particle.x < -500 || particle.x > canvas.width + 500 || 
-            particle.y < -500 || particle.y > canvas.height + 500) {
+        if (particle.x < -700 || particle.x > canvas.width + 700 || 
+            particle.y < -700 || particle.y > canvas.height + 700) {
           if (!particle.cut && particle.category === prev.targetCategory && checkDirectionMatch(particle)) {
             return false; // Will increment missed count
           }
@@ -220,7 +220,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
       });
 
       // MASSIVE particle generation - maintain very high count
-      const targetCount = levelConfig.particleCount;
+      const targetCount = levelConfig.particleCount * 4; // Quadruple the base count
       const currentCount = updatedParticles.length;
       const particlesToAdd = Math.max(0, targetCount - currentCount);
       
@@ -230,9 +230,9 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
       }
 
       // Add continuous stream of extra particles for abundance
-      const extraParticles = Math.floor(Math.random() * 10) + 6; // 6-15 extra particles per frame
+      const extraParticles = Math.floor(Math.random() * 20) + 12; // 12-31 extra particles per frame
       for (let i = 0; i < extraParticles; i++) {
-        if (updatedParticles.length < targetCount * 2.5) { // Allow up to 2.5x target count
+        if (updatedParticles.length < targetCount * 2) { // Allow up to 2x target count
           updatedParticles.push(createCodeParticle());
         }
       }
@@ -280,16 +280,16 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
     // Enhanced mouse trail generation
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 10; i++) {
       setGameState(prev => ({
         ...prev,
         mouseTrails: [
-          ...prev.mouseTrails.slice(-50),
+          ...prev.mouseTrails.slice(-70),
           {
-            x: mouseX + (Math.random() - 0.5) * 15,
-            y: mouseY + (Math.random() - 0.5) * 15,
+            x: mouseX + (Math.random() - 0.5) * 25,
+            y: mouseY + (Math.random() - 0.5) * 25,
             color: `hsl(${(Date.now() + 180) % 360}, 100%, 60%)`,
-            life: 1.0
+            life: 1.5
           }
         ]
       }));
@@ -297,27 +297,26 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
 
     if (!gameState.isPlaying) return;
 
-    setGameState(prev => ({
-      ...prev,
-      particles: prev.particles.map(particle => {
+    setGameState(prev => {
+      const updatedParticles = prev.particles.map(particle => {
         if (!particle.cut) {
           const distance = Math.sqrt(
             Math.pow(mouseX - particle.x, 2) + Math.pow(mouseY - particle.y, 2)
           );
 
-          if (distance < particle.size + 30) {
+          if (distance < particle.size + 40) {
             particle.cut = true;
             
             const isValidTarget = particle.category === prev.targetCategory && checkDirectionMatch(particle);
             
             if (isValidTarget) {
               // Add explosion effect
-              for (let i = 0; i < 50; i++) {
+              for (let i = 0; i < 60; i++) {
                 const explosionTrail = {
-                  x: particle.x + (Math.random() - 0.5) * 150,
-                  y: particle.y + (Math.random() - 0.5) * 150,
+                  x: particle.x + (Math.random() - 0.5) * 180,
+                  y: particle.y + (Math.random() - 0.5) * 180,
                   color: '#00ff00',
-                  life: 1.8
+                  life: 2.2
                 };
                 prev.mouseTrails.push(explosionTrail);
               }
@@ -325,19 +324,26 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
               return {
                 ...prev,
                 score: prev.score + 15,
-                particlesCut: prev.particlesCut + 1
+                particlesCut: prev.particlesCut + 1,
+                particles: updatedParticles
               };
             } else {
               return {
                 ...prev,
-                score: Math.max(0, prev.score - 3)
+                score: Math.max(0, prev.score - 3),
+                particles: updatedParticles
               };
             }
           }
         }
-        return prev;
-      })
-    }));
+        return particle;
+      });
+      
+      return {
+        ...prev,
+        particles: updatedParticles
+      };
+    });
   }, [gameState.isPlaying, checkDirectionMatch]);
 
   // Timer effect
@@ -360,7 +366,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     if (gameState.isPlaying && gameState.targetCategory) {
       const interval = setInterval(() => {
         generateNewTarget();
-      }, 8000);
+      }, 6000); // Faster target changes
       return () => clearInterval(interval);
     }
   }, [gameState.isPlaying, generateNewTarget, gameState.targetCategory]);
@@ -380,9 +386,10 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
   // Initialize particles when game starts
   useEffect(() => {
     if (gameState.isPlaying && gameState.particles.length === 0) {
-      console.log('Initializing code particles...');
+      console.log('Initializing massive code particles...');
       const initialParticles = [];
-      for (let i = 0; i < levelConfig.particleCount; i++) {
+      const initialCount = levelConfig.particleCount * 3; // Triple initial count
+      for (let i = 0; i < initialCount; i++) {
         initialParticles.push(createCodeParticle());
       }
       setGameState(prev => ({
@@ -431,7 +438,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
       isPlaying: false,
       isFullscreen: false
     }));
-    const timeTaken = Math.round((Date.now() - prev.gameStartTime) / 1000);
+    const timeTaken = Math.round((Date.now() - gameState.gameStartTime) / 1000);
     const accuracy = gameState.particlesCut > 0 ? (gameState.particlesCut / (gameState.particlesCut + gameState.particlesMissed)) * 100 : 0;
 
     if (user) {
@@ -440,7 +447,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
           user_id: user.id,
           game_type: 'code',
           level: gameState.currentLevel,
-          score,
+          score: gameState.score,
           accuracy,
           time_taken: timeTaken,
           particles_cut: gameState.particlesCut,
