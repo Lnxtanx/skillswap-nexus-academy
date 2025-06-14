@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,11 +19,19 @@ interface Particle {
   cut: boolean;
 }
 
+interface MouseTrail {
+  x: number;
+  y: number;
+  color: string;
+  life: number;
+}
+
 interface FruitCuttingGameProps {
   onBack: () => void;
 }
 
-const COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+const COLORS = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ff00ff', '#ffa500'];
+const COLOR_NAMES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 const LEVELS = [
   { level: 1, speed: 1, particleCount: 3, timeLimit: 30 },
   { level: 2, speed: 1.5, particleCount: 4, timeLimit: 45 },
@@ -43,7 +50,9 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [score, setScore] = useState(0);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [mouseTrails, setMouseTrails] = useState<MouseTrail[]>([]);
   const [targetColor, setTargetColor] = useState<string>('');
+  const [targetColorName, setTargetColorName] = useState<string>('');
   const [timeLeft, setTimeLeft] = useState(30);
   const [particlesCut, setParticlesCut] = useState(0);
   const [particlesMissed, setParticlesMissed] = useState(0);
@@ -51,23 +60,49 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
 
   const levelConfig = LEVELS[currentLevel - 1];
 
-  // Voice instruction function
+  // Voice instruction function with better error handling
   const speakInstruction = useCallback(async (text: string) => {
     try {
-      const response = await fetch('/api/text-to-speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+      console.log('Speaking:', text);
+      
+      // Try browser speech synthesis first (more reliable)
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Cancel any ongoing speech
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.volume = 0.8;
+        utterance.pitch = 1.0;
+        
+        // Use a more suitable voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const englishVoice = voices.find(voice => voice.lang.includes('en'));
+        if (englishVoice) {
+          utterance.voice = englishVoice;
+        }
+        
+        window.speechSynthesis.speak(utterance);
+        return;
+      }
+
+      // Fallback to API
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { 
           text,
           voice: 'alloy',
           model: 'tts-1'
-        }),
+        }
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (error) {
+        console.error('TTS API error:', error);
+        return;
+      }
+
+      if (data?.audioContent) {
         const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-        audio.play();
+        audio.volume = 0.7;
+        await audio.play();
       }
     } catch (error) {
       console.error('Voice instruction failed:', error);
@@ -76,9 +111,12 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
 
   // Generate new target color and give voice instruction
   const generateNewTarget = useCallback(() => {
-    const newColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const colorIndex = Math.floor(Math.random() * COLORS.length);
+    const newColor = COLORS[colorIndex];
+    const newColorName = COLOR_NAMES[colorIndex];
     setTargetColor(newColor);
-    speakInstruction(`Cut the ${newColor} particles!`);
+    setTargetColorName(newColorName);
+    speakInstruction(`Cut the ${newColorName} fruits!`);
   }, [speakInstruction]);
 
   // Create new particle
@@ -86,34 +124,36 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
     const canvas = canvasRef.current;
     if (!canvas) return {} as Particle;
 
-    const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+    const side = Math.floor(Math.random() * 4);
     let x, y, vx, vy;
 
     switch (side) {
       case 0: // top
         x = Math.random() * canvas.width;
         y = -50;
-        vx = (Math.random() - 0.5) * 4;
-        vy = Math.random() * 3 + 2;
+        vx = (Math.random() - 0.5) * 3;
+        vy = Math.random() * 2 + 1.5;
         break;
       case 1: // right
         x = canvas.width + 50;
         y = Math.random() * canvas.height;
-        vx = -(Math.random() * 3 + 2);
-        vy = (Math.random() - 0.5) * 4;
+        vx = -(Math.random() * 2 + 1.5);
+        vy = (Math.random() - 0.5) * 3;
         break;
       case 2: // bottom
         x = Math.random() * canvas.width;
         y = canvas.height + 50;
-        vx = (Math.random() - 0.5) * 4;
-        vy = -(Math.random() * 3 + 2);
+        vx = (Math.random() - 0.5) * 3;
+        vy = -(Math.random() * 2 + 1.5);
         break;
       default: // left
         x = -50;
         y = Math.random() * canvas.height;
-        vx = Math.random() * 3 + 2;
-        vy = (Math.random() - 0.5) * 4;
+        vx = Math.random() * 2 + 1.5;
+        vy = (Math.random() - 0.5) * 3;
     }
+
+    const colorIndex = Math.floor(Math.random() * COLORS.length);
 
     return {
       id: Math.random().toString(36).substr(2, 9),
@@ -121,21 +161,42 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
       y,
       vx: vx * levelConfig.speed,
       vy: vy * levelConfig.speed,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      size: Math.random() * 20 + 30,
+      color: COLORS[colorIndex],
+      size: Math.random() * 15 + 25, // Bigger particles
       type: 'fruit',
       cut: false
     };
   }, [levelConfig.speed]);
 
-  // Game loop
+  // Game loop with mouse trails
   const gameLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Clear canvas with fade effect
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Update and draw mouse trails
+    setMouseTrails(prevTrails => {
+      const updatedTrails = prevTrails.map(trail => ({
+        ...trail,
+        life: trail.life - 0.02
+      })).filter(trail => trail.life > 0);
+
+      // Draw trails
+      updatedTrails.forEach((trail, index) => {
+        ctx.globalAlpha = trail.life;
+        ctx.fillStyle = trail.color;
+        ctx.beginPath();
+        ctx.arc(trail.x, trail.y, 8 * trail.life, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+
+      ctx.globalAlpha = 1.0;
+      return updatedTrails;
+    });
 
     // Update and draw particles
     setParticles(prevParticles => {
@@ -143,17 +204,32 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
         if (!particle.cut) {
           particle.x += particle.vx;
           particle.y += particle.vy;
-          particle.vy += 0.2; // gravity
+          particle.vy += 0.15; // gravity
         }
 
-        // Draw particle
+        // Draw particle with glow effect
+        const isTarget = particle.color === targetColor;
+        
+        // Glow effect for target particles
+        if (isTarget && !particle.cut) {
+          ctx.shadowColor = particle.color;
+          ctx.shadowBlur = 20;
+        }
+        
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size, 0, 2 * Math.PI);
-        ctx.fillStyle = particle.cut ? '#666' : particle.color;
+        ctx.fillStyle = particle.cut ? '#444' : particle.color;
         ctx.fill();
-        ctx.strokeStyle = particle.color === targetColor ? '#fff' : '#333';
-        ctx.lineWidth = particle.color === targetColor ? 3 : 1;
-        ctx.stroke();
+        
+        // White border for target particles
+        if (isTarget && !particle.cut) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+        
+        // Reset shadow
+        ctx.shadowBlur = 0;
 
         return particle;
       }).filter(particle => {
@@ -181,16 +257,27 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
     }
   }, [isPlaying, targetColor, levelConfig.particleCount, createParticle]);
 
-  // Handle mouse move for cutting
+  // Handle mouse move for cutting and trails
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isPlaying) return;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    // Add colorful mouse trail
+    setMouseTrails(prev => [
+      ...prev.slice(-20), // Keep only last 20 trails
+      {
+        x: mouseX,
+        y: mouseY,
+        color: `hsl(${Date.now() % 360}, 100%, 60%)`,
+        life: 1.0
+      }
+    ]);
+
+    if (!isPlaying) return;
 
     setParticles(prevParticles => 
       prevParticles.map(particle => {
@@ -205,6 +292,15 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
             if (particle.color === targetColor) {
               setScore(prev => prev + 10);
               setParticlesCut(prev => prev + 1);
+              // Add explosion effect
+              for (let i = 0; i < 10; i++) {
+                setMouseTrails(prev => [...prev, {
+                  x: particle.x + (Math.random() - 0.5) * 40,
+                  y: particle.y + (Math.random() - 0.5) * 40,
+                  color: particle.color,
+                  life: 0.8
+                }]);
+              }
             } else {
               setScore(prev => Math.max(0, prev - 5));
             }
@@ -232,7 +328,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
     if (isPlaying && targetColor) {
       const interval = setInterval(() => {
         generateNewTarget();
-      }, 8000); // Change target every 8 seconds
+      }, 8000);
       return () => clearInterval(interval);
     }
   }, [isPlaying, generateNewTarget, targetColor]);
@@ -257,6 +353,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
     setTimeLeft(levelConfig.timeLimit);
     setGameStartTime(Date.now());
     setParticles([]);
+    setMouseTrails([]);
     generateNewTarget();
     speakInstruction(`Level ${currentLevel} starting! Get ready to cut fruits!`);
   };
@@ -303,7 +400,9 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
     setParticlesMissed(0);
     setTimeLeft(levelConfig.timeLimit);
     setParticles([]);
+    setMouseTrails([]);
     setTargetColor('');
+    setTargetColorName('');
   };
 
   return (
@@ -323,14 +422,14 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
       <div className="grid lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
           <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <canvas
                 ref={canvasRef}
-                width={800}
-                height={600}
-                className="w-full bg-gradient-to-b from-blue-900/20 to-green-900/20 rounded-lg cursor-crosshair"
+                width={600}
+                height={400}
+                className="w-full bg-gradient-to-b from-blue-900/30 to-green-900/30 rounded-lg cursor-crosshair border-2 border-gray-700"
                 onMouseMove={handleMouseMove}
-                style={{ maxHeight: '600px' }}
+                style={{ maxWidth: '100%', height: 'auto' }}
               />
             </CardContent>
           </Card>
@@ -378,10 +477,10 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
               {targetColor && (
                 <div className="text-center">
                   <div 
-                    className="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white"
+                    className="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg"
                     style={{ backgroundColor: targetColor }}
                   ></div>
-                  <p className="text-white font-bold">Cut {targetColor} fruits!</p>
+                  <p className="text-white font-bold">Cut {targetColorName} fruits!</p>
                 </div>
               )}
             </CardContent>
