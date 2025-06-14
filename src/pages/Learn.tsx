@@ -9,7 +9,6 @@ import { useUserEnrollments } from '@/hooks/useEnrollments';
 import { useCourses } from '@/hooks/useCourses';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import WeirdSkillsSection from '@/components/learning/WeirdSkillsSection';
 import LearningStats from '@/components/learning/LearningStats';
 import ActiveCourses from '@/components/learning/ActiveCourses';
 import AITutorsGrid from '@/components/learning/AITutorsGrid';
@@ -66,9 +65,6 @@ const Learn = () => {
 
         {/* Learning Stats */}
         <LearningStats enrollments={enrollments || []} />
-
-        {/* Weird Skills Wednesday Section */}
-        <WeirdSkillsSection />
 
         {/* Active Courses */}
         <ActiveCourses enrollments={enrollments || []} />

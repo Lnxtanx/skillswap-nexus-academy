@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Video, VideoOff, Share, Save, Play, Pause } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Share, Save, Play, Pause, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useTutorSession } from '@/hooks/useTutorSession';
 import { AIPersona, TutorSessionData } from '@/types/tutor';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AITutorProps {
   courseId?: number;
@@ -14,9 +16,6 @@ interface AITutorProps {
   lessonId?: string;
   onSessionComplete?: (sessionData: TutorSessionData) => void;
 }
-
-// Tavus API configuration
-const TAVUS_API_KEY = '220636fd8df3466b8be359cf0ef9467a';
 
 const AI_PERSONAS: Record<string, AIPersona> = {
   'programming': {
@@ -79,25 +78,22 @@ const AITutor: React.FC<AITutorProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const videoRef = useRef<HTMLVideoElement>(null);
   
   const [selectedPersona, setSelectedPersona] = useState<AIPersona>(
     AI_PERSONAS[courseCategory] || AI_PERSONAS['programming']
   );
-  const [isVideoActive, setIsVideoActive] = useState(false);
+  const [isSessionActive, setIsSessionActive] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<any[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [tavusSession, setTavusSession] = useState<any>(null);
+  const [isAIResponding, setIsAIResponding] = useState(false);
 
   const {
     createSession,
     endSession,
     saveConversation,
-    isSessionActive,
     sessionId
   } = useTutorSession();
 
@@ -107,7 +103,7 @@ const AITutor: React.FC<AITutorProps> = ({
     }
   }, [courseCategory]);
 
-  const initializeTavusSession = async () => {
+  const startTutorSession = async () => {
     try {
       setIsLoading(true);
       
@@ -119,20 +115,7 @@ const AITutor: React.FC<AITutorProps> = ({
         personaId: selectedPersona.id
       });
 
-      const tavusConfig = {
-        apiKey: TAVUS_API_KEY,
-        replicaId: selectedPersona.tavusReplicaId,
-        conversationId: sessionData?.id || 'temp-session',
-        properties: {
-          max_session_length: 3600,
-          language: 'en'
-        }
-      };
-
-      console.log('Initializing Tavus session with config:', tavusConfig);
-      
-      setTavusSession(tavusConfig);
-      setIsVideoActive(true);
+      setIsSessionActive(true);
       
       toast({
         title: "AI Tutor Connected",
@@ -149,7 +132,7 @@ const AITutor: React.FC<AITutorProps> = ({
       setConversationHistory([greetingMessage]);
 
     } catch (error) {
-      console.error('Failed to initialize Tavus session:', error);
+      console.error('Failed to start tutor session:', error);
       toast({
         title: "Connection Error",
         description: "Failed to connect to AI tutor. Please try again.",
@@ -157,6 +140,70 @@ const AITutor: React.FC<AITutorProps> = ({
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const sendMessage = async (message: string) => {
+    if (!message.trim() || !isSessionActive) return;
+
+    try {
+      const newMessage = {
+        id: Date.now(),
+        type: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+      };
+
+      setConversationHistory(prev => [...prev, newMessage]);
+      setCurrentMessage('');
+      setIsAIResponding(true);
+
+      // Send message to Gemini API
+      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+        body: {
+          message: message,
+          context: {
+            persona: selectedPersona.name,
+            personality: selectedPersona.personality,
+            course: `Course ID: ${courseId}`,
+            category: courseCategory,
+            lesson: lessonId ? `Lesson ${lessonId}` : 'Introduction'
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const aiResponse = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: data.response,
+        timestamp: new Date().toISOString(),
+        persona: selectedPersona.id
+      };
+      
+      setConversationHistory(prev => [...prev, aiResponse]);
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorResponse = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: "I'm sorry, I'm having trouble responding right now. Please try again.",
+        timestamp: new Date().toISOString(),
+        persona: selectedPersona.id
+      };
+      setConversationHistory(prev => [...prev, errorResponse]);
+      
+      toast({
+        title: "Message Error",
+        description: "Failed to get response from AI tutor",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAIResponding(false);
     }
   };
 
@@ -185,31 +232,6 @@ const AITutor: React.FC<AITutorProps> = ({
     }
   };
 
-  const toggleScreenShare = async () => {
-    try {
-      if (!isScreenSharing) {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        setIsScreenSharing(true);
-        toast({
-          title: "Screen Sharing Started",
-          description: "Your screen is now being shared with the AI tutor",
-        });
-      } else {
-        setIsScreenSharing(false);
-        toast({
-          title: "Screen Sharing Stopped",
-          description: "Screen sharing has been disabled",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Screen Share Error",
-        description: "Could not start screen sharing",
-        variant: "destructive",
-      });
-    }
-  };
-
   const toggleRecording = async () => {
     if (!isRecording) {
       setIsRecording(true);
@@ -229,50 +251,6 @@ const AITutor: React.FC<AITutorProps> = ({
     }
   };
 
-  const sendMessage = async (message: string) => {
-    if (!message.trim() || !isSessionActive) return;
-
-    try {
-      const newMessage = {
-        id: Date.now(),
-        type: 'user',
-        content: message,
-        timestamp: new Date().toISOString()
-      };
-
-      setConversationHistory(prev => [...prev, newMessage]);
-      setCurrentMessage('');
-
-      // Simulate AI response with persona context
-      setTimeout(() => {
-        const responses = {
-          'code-master': "Let me help you understand that concept. In programming, we need to think step by step...",
-          'professor-pine': "Excellent question! From a scientific perspective, this phenomenon occurs because...",
-          'chef-charlie': "Ah, magnifique! This technique is essential in French cuisine. Let me explain...",
-          'sensei-sam': "Good observation, student. In martial arts, we learn that balance is key...",
-          'language-luna': "¡Perfecto! That's a wonderful way to practice. In Spanish, we would say..."
-        };
-
-        const aiResponse = {
-          id: Date.now() + 1,
-          type: 'ai',
-          content: responses[selectedPersona.id] || `${selectedPersona.name}: That's a great question! Let me help you with that...`,
-          timestamp: new Date().toISOString(),
-          persona: selectedPersona.id
-        };
-        setConversationHistory(prev => [...prev, aiResponse]);
-      }, 1500);
-
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Message Error",
-        description: "Failed to send message to AI tutor",
-        variant: "destructive",
-      });
-    }
-  };
-
   const endTutorSession = async () => {
     if (sessionId) {
       try {
@@ -284,11 +262,9 @@ const AITutor: React.FC<AITutorProps> = ({
         console.error('Error ending session:', error);
       }
     }
-    setIsVideoActive(false);
+    setIsSessionActive(false);
     setIsMicActive(false);
     setIsRecording(false);
-    setIsScreenSharing(false);
-    setTavusSession(null);
     toast({
       title: "Session Ended",
       description: "Your tutoring session has been completed and saved",
@@ -322,35 +298,41 @@ const AITutor: React.FC<AITutorProps> = ({
                     Active
                   </Badge>
                 )}
-                {tavusSession && (
-                  <Badge className="bg-gradient-to-r from-primary-500 to-secondary-500">
-                    Tavus Connected
-                  </Badge>
-                )}
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="aspect-video bg-gray-900 rounded-lg mb-4 relative overflow-hidden border border-gray-800">
-              {isVideoActive && tavusSession ? (
-                <div className="flex items-center justify-center h-full text-white bg-gradient-to-br from-gray-800 to-gray-900">
+              {isSessionActive ? (
+                <div className="flex items-center justify-center h-full text-white bg-gradient-to-br from-blue-900 to-purple-900">
                   <div className="text-center">
-                    <span className="text-8xl mb-4 block animate-pulse">{selectedPersona.avatar}</span>
-                    <p className="text-xl mb-2 text-white">AI Video Stream Active</p>
-                    <p className="text-sm opacity-75 text-gray-300">Powered by Tavus</p>
+                    <div className="relative mb-4">
+                      <span className="text-8xl block animate-bounce">{selectedPersona.avatar}</span>
+                      {isAIResponding && (
+                        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xl mb-2 text-white">{selectedPersona.name} is here!</p>
+                    <p className="text-sm opacity-75 text-gray-300">Ready to teach you about {courseCategory}</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-white">
                   <div className="text-center">
                     <span className="text-6xl mb-4 block">{selectedPersona.avatar}</span>
-                    <p className="text-lg mb-2 text-white">{selectedPersona.greeting}</p>
+                    <p className="text-lg mb-4 text-white">Meet your AI tutor for {courseCategory}</p>
                     <Button 
-                      onClick={initializeTavusSession}
+                      onClick={startTutorSession}
                       disabled={isLoading}
-                      className="bg-primary-500 hover:bg-primary-600 text-white"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      {isLoading ? 'Connecting...' : 'Start AI Session'}
+                      {isLoading ? 'Connecting...' : 'Start Learning Session'}
                     </Button>
                   </div>
                 </div>
@@ -362,42 +344,23 @@ const AITutor: React.FC<AITutorProps> = ({
                 variant={isMicActive ? "default" : "outline"}
                 size="sm"
                 onClick={toggleMicrophone}
-                disabled={!isVideoActive}
+                disabled={!isSessionActive}
                 className="border-gray-700 text-white hover:bg-gray-800"
               >
                 {isMicActive ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-              </Button>
-              
-              <Button
-                variant={isVideoActive ? "default" : "outline"}
-                size="sm"
-                onClick={() => setIsVideoActive(!isVideoActive)}
-                className="border-gray-700 text-white hover:bg-gray-800"
-              >
-                {isVideoActive ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-              </Button>
-
-              <Button
-                variant={isScreenSharing ? "default" : "outline"}
-                size="sm"
-                onClick={toggleScreenShare}
-                disabled={!isVideoActive}
-                className="border-gray-700 text-white hover:bg-gray-800"
-              >
-                <Share className="w-4 h-4" />
               </Button>
 
               <Button
                 variant={isRecording ? "destructive" : "outline"}
                 size="sm"
                 onClick={toggleRecording}
-                disabled={!isVideoActive}
+                disabled={!isSessionActive}
                 className="border-gray-700 text-white hover:bg-gray-800"
               >
                 {isRecording ? <Pause className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               </Button>
 
-              {isVideoActive && (
+              {isSessionActive && (
                 <Button
                   variant="destructive"
                   size="sm"
@@ -415,7 +378,7 @@ const AITutor: React.FC<AITutorProps> = ({
       <div className="space-y-4">
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">Conversation</CardTitle>
+            <CardTitle className="text-white">Chat with {selectedPersona.name}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64 overflow-y-auto mb-4 space-y-3">
@@ -424,7 +387,7 @@ const AITutor: React.FC<AITutorProps> = ({
                   key={message.id}
                   className={`p-3 rounded-lg ${
                     message.type === 'user'
-                      ? 'bg-primary-900 text-white ml-4'
+                      ? 'bg-blue-900 text-white ml-4'
                       : 'bg-gray-800 text-white mr-4'
                   }`}
                 >
@@ -434,9 +397,21 @@ const AITutor: React.FC<AITutorProps> = ({
                   </span>
                 </div>
               ))}
-              {conversationHistory.length === 0 && (
+              {isAIResponding && (
+                <div className="bg-gray-800 text-white mr-4 p-3 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm">{selectedPersona.name} is typing</span>
+                    <div className="flex space-x-1">
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {conversationHistory.length === 0 && !isSessionActive && (
                 <div className="text-center text-gray-400 py-8">
-                  <p>Start a conversation with your AI tutor!</p>
+                  <p>Start a session to chat with your AI tutor!</p>
                 </div>
               )}
             </div>
@@ -446,18 +421,18 @@ const AITutor: React.FC<AITutorProps> = ({
                 type="text"
                 value={currentMessage}
                 onChange={(e) => setCurrentMessage(e.target.value)}
-                placeholder="Ask your AI tutor..."
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder={isSessionActive ? `Ask ${selectedPersona.name} about ${courseCategory}...` : "Start a session to chat"}
+                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage(currentMessage)}
-                disabled={!isVideoActive}
+                disabled={!isSessionActive || isAIResponding}
               />
               <Button
                 onClick={() => sendMessage(currentMessage)}
-                disabled={!currentMessage.trim() || !isVideoActive}
+                disabled={!currentMessage.trim() || !isSessionActive || isAIResponding}
                 size="sm"
-                className="bg-primary-500 hover:bg-primary-600 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                Send
+                <Send className="w-4 h-4" />
               </Button>
             </div>
           </CardContent>
@@ -488,14 +463,6 @@ const AITutor: React.FC<AITutorProps> = ({
                   ))}
                 </div>
               </div>
-              
-              {tavusSession && (
-                <div className="mt-4 p-3 bg-gradient-to-r from-primary-500/10 to-secondary-500/10 rounded-lg border border-gray-800">
-                  <p className="text-xs text-gray-400">
-                    🔗 Connected to Tavus AI Video
-                  </p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
