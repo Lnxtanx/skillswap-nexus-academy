@@ -144,7 +144,7 @@ const AITutor: React.FC<AITutorProps> = ({
   };
 
   const sendMessage = async (message: string) => {
-    if (!message.trim() || !isSessionActive) return;
+    if (!message.trim()) return;
 
     try {
       const newMessage = {
@@ -158,6 +158,8 @@ const AITutor: React.FC<AITutorProps> = ({
       setCurrentMessage('');
       setIsAIResponding(true);
 
+      console.log('Sending message to Gemini:', message);
+
       // Send message to Gemini API
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: {
@@ -165,12 +167,15 @@ const AITutor: React.FC<AITutorProps> = ({
           context: {
             persona: selectedPersona.name,
             personality: selectedPersona.personality,
-            course: `Course ID: ${courseId}`,
+            course: courseId ? `Course ID: ${courseId}` : 'General learning',
             category: courseCategory,
-            lesson: lessonId ? `Lesson ${lessonId}` : 'Introduction'
+            lesson: lessonId ? `Lesson ${lessonId}` : 'Introduction',
+            conversationHistory: conversationHistory.slice(-3)
           }
         }
       });
+
+      console.log('Gemini response:', data, 'Error:', error);
 
       if (error) {
         throw error;
@@ -179,7 +184,7 @@ const AITutor: React.FC<AITutorProps> = ({
       const aiResponse = {
         id: Date.now() + 1,
         type: 'ai',
-        content: data.response,
+        content: data.response || "I'm here to help! What would you like to learn about?",
         timestamp: new Date().toISOString(),
         persona: selectedPersona.id
       };
@@ -191,7 +196,7 @@ const AITutor: React.FC<AITutorProps> = ({
       const errorResponse = {
         id: Date.now() + 1,
         type: 'ai',
-        content: "I'm sorry, I'm having trouble responding right now. Please try again.",
+        content: "I'm sorry, I'm having trouble responding right now. Please try again in a moment.",
         timestamp: new Date().toISOString(),
         persona: selectedPersona.id
       };
@@ -265,6 +270,7 @@ const AITutor: React.FC<AITutorProps> = ({
     setIsSessionActive(false);
     setIsMicActive(false);
     setIsRecording(false);
+    setConversationHistory([]);
     toast({
       title: "Session Ended",
       description: "Your tutoring session has been completed and saved",
@@ -279,7 +285,7 @@ const AITutor: React.FC<AITutorProps> = ({
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <span className="text-2xl">{selectedPersona.avatar}</span>
+                <span className="text-3xl">{selectedPersona.avatar}</span>
                 <div>
                   <CardTitle className="text-white">{selectedPersona.name}</CardTitle>
                   <p className="text-sm text-gray-400">
@@ -294,7 +300,7 @@ const AITutor: React.FC<AITutorProps> = ({
                   </Badge>
                 )}
                 {isSessionActive && (
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="bg-green-900 text-green-300">
                     Active
                   </Badge>
                 )}
@@ -302,35 +308,37 @@ const AITutor: React.FC<AITutorProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="aspect-video bg-gray-900 rounded-lg mb-4 relative overflow-hidden border border-gray-800">
+            <div className="aspect-video bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 rounded-lg mb-4 relative overflow-hidden border border-gray-700">
               {isSessionActive ? (
-                <div className="flex items-center justify-center h-full text-white bg-gradient-to-br from-blue-900 to-purple-900">
+                <div className="flex items-center justify-center h-full text-white">
                   <div className="text-center">
-                    <div className="relative mb-4">
-                      <span className="text-8xl block animate-bounce">{selectedPersona.avatar}</span>
+                    <div className="relative mb-6">
+                      <div className="text-9xl animate-pulse mb-4">{selectedPersona.avatar}</div>
                       {isAIResponding && (
-                        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                        <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2">
+                          <div className="flex space-x-2">
+                            <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce"></div>
+                            <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                            <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
                           </div>
                         </div>
                       )}
                     </div>
-                    <p className="text-xl mb-2 text-white">{selectedPersona.name} is here!</p>
-                    <p className="text-sm opacity-75 text-gray-300">Ready to teach you about {courseCategory}</p>
+                    <h2 className="text-2xl font-bold mb-2 text-white">{selectedPersona.name}</h2>
+                    <p className="text-lg opacity-75 text-gray-300">Teaching {courseCategory}</p>
+                    <p className="text-sm opacity-60 text-gray-400 mt-2">Ask me anything about the course!</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-white">
                   <div className="text-center">
-                    <span className="text-6xl mb-4 block">{selectedPersona.avatar}</span>
-                    <p className="text-lg mb-4 text-white">Meet your AI tutor for {courseCategory}</p>
+                    <div className="text-8xl mb-6">{selectedPersona.avatar}</div>
+                    <h2 className="text-2xl font-bold mb-4 text-white">Meet {selectedPersona.name}</h2>
+                    <p className="text-lg mb-6 text-gray-300">Your AI tutor for {courseCategory}</p>
                     <Button 
                       onClick={startTutorSession}
                       disabled={isLoading}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
                     >
                       {isLoading ? 'Connecting...' : 'Start Learning Session'}
                     </Button>
@@ -345,7 +353,11 @@ const AITutor: React.FC<AITutorProps> = ({
                 size="sm"
                 onClick={toggleMicrophone}
                 disabled={!isSessionActive}
-                className="border-gray-700 text-white hover:bg-gray-800"
+                className={`${
+                  isMicActive 
+                    ? 'bg-red-600 hover:bg-red-700 text-white' 
+                    : 'bg-gray-800 hover:bg-gray-700 text-white border-gray-600'
+                }`}
               >
                 {isMicActive ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
               </Button>
@@ -355,7 +367,11 @@ const AITutor: React.FC<AITutorProps> = ({
                 size="sm"
                 onClick={toggleRecording}
                 disabled={!isSessionActive}
-                className="border-gray-700 text-white hover:bg-gray-800"
+                className={`${
+                  isRecording 
+                    ? 'bg-red-600 hover:bg-red-700 text-white' 
+                    : 'bg-gray-800 hover:bg-gray-700 text-white border-gray-600'
+                }`}
               >
                 {isRecording ? <Pause className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               </Button>
@@ -365,6 +381,7 @@ const AITutor: React.FC<AITutorProps> = ({
                   variant="destructive"
                   size="sm"
                   onClick={endTutorSession}
+                  className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   End Session
                 </Button>
@@ -381,7 +398,7 @@ const AITutor: React.FC<AITutorProps> = ({
             <CardTitle className="text-white">Chat with {selectedPersona.name}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64 overflow-y-auto mb-4 space-y-3">
+            <div className="h-80 overflow-y-auto mb-4 space-y-3 border border-gray-700 rounded-lg p-3">
               {conversationHistory.map((message) => (
                 <div
                   key={message.id}
@@ -400,11 +417,11 @@ const AITutor: React.FC<AITutorProps> = ({
               {isAIResponding && (
                 <div className="bg-gray-800 text-white mr-4 p-3 rounded-lg">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm">{selectedPersona.name} is typing</span>
+                    <span className="text-sm">{selectedPersona.name} is thinking</span>
                     <div className="flex space-x-1">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                     </div>
                   </div>
                 </div>
@@ -445,7 +462,7 @@ const AITutor: React.FC<AITutorProps> = ({
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <span className="text-lg">{selectedPersona.avatar}</span>
+                <span className="text-2xl">{selectedPersona.avatar}</span>
                 <span className="font-medium text-white">{selectedPersona.name}</span>
               </div>
               
