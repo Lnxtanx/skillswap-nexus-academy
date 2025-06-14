@@ -93,34 +93,22 @@
 
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-  }
-
-  .dark body {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
   }
 }
 
 @layer components {
   .glass {
-    @apply backdrop-blur-lg bg-white/10 border border-white/20 shadow-xl;
-  }
-  
-  .dark .glass {
-    @apply backdrop-blur-lg bg-black/10 border border-white/10;
+    @apply backdrop-blur-lg bg-black/10 border border-white/10 shadow-xl;
   }
   
   .glass-card {
-    @apply glass rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:bg-white/20;
-  }
-  
-  .dark .glass-card {
-    @apply hover:bg-black/20;
+    @apply glass rounded-2xl p-6 transition-all duration-500 hover:shadow-2xl hover:bg-black/20 hover:scale-105;
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-primary-600 via-secondary-500 to-accent-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary-400 via-secondary-400 to-accent-400 bg-clip-text text-transparent;
   }
   
   .hero-gradient {
