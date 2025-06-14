@@ -40,11 +40,11 @@ const CODE_SNIPPETS = {
 
 const CATEGORIES = Object.keys(CODE_SNIPPETS);
 const LEVELS = [
-  { level: 1, speed: 1, particleCount: 3, timeLimit: 30 },
-  { level: 2, speed: 1.5, particleCount: 4, timeLimit: 45 },
-  { level: 3, speed: 2, particleCount: 5, timeLimit: 60 },
-  { level: 4, speed: 2.5, particleCount: 6, timeLimit: 75 },
-  { level: 5, speed: 3, particleCount: 8, timeLimit: 90 }
+  { level: 1, speed: 1, particleCount: 6, timeLimit: 60 },
+  { level: 2, speed: 1.5, particleCount: 8, timeLimit: 90 },
+  { level: 3, speed: 2, particleCount: 10, timeLimit: 120 },
+  { level: 4, speed: 2.5, particleCount: 12, timeLimit: 150 },
+  { level: 5, speed: 3, particleCount: 15, timeLimit: 180 }
 ];
 
 const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
@@ -59,7 +59,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
   const [particles, setParticles] = useState<CodeParticle[]>([]);
   const [mouseTrails, setMouseTrails] = useState<MouseTrail[]>([]);
   const [targetCategory, setTargetCategory] = useState<string>('');
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(60);
   const [particlesCut, setParticlesCut] = useState(0);
   const [particlesMissed, setParticlesMissed] = useState(0);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
@@ -91,12 +91,11 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         return;
       }
 
-      // Fallback to API
+      // Fallback to ElevenLabs API
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
           text,
-          voice: 'alloy',
-          model: 'tts-1'
+          voice: 'alloy'
         }
       });
 
@@ -115,15 +114,26 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     }
   }, []);
 
-  // Generate new target category and give voice instruction
+  // Generate new target category and ensure it appears in the game
   const generateNewTarget = useCallback(() => {
     const newCategory = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
     setTargetCategory(newCategory);
     speakInstruction(`Cut all ${newCategory} code snippets!`);
+
+    // Force spawn some target category particles
+    setTimeout(() => {
+      setParticles(prevParticles => {
+        const targetParticles = [...prevParticles];
+        for (let i = 0; i < 3; i++) {
+          targetParticles.push(createCodeParticleWithCategory(newCategory));
+        }
+        return targetParticles;
+      });
+    }, 1000);
   }, [speakInstruction]);
 
-  // Create new code particle
-  const createCodeParticle = useCallback((): CodeParticle => {
+  // Create new code particle with specific category
+  const createCodeParticleWithCategory = useCallback((category: string): CodeParticle => {
     const canvas = canvasRef.current;
     if (!canvas) return {} as CodeParticle;
 
@@ -156,7 +166,6 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         vy = (Math.random() - 0.5) * 3;
     }
 
-    const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
     const codeSnippets = CODE_SNIPPETS[category];
     const code = codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
@@ -168,10 +177,16 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
       vy: vy * levelConfig.speed,
       code,
       category,
-      size: 50, // Bigger code blocks
+      size: 50,
       cut: false
     };
   }, [levelConfig.speed]);
+
+  // Create new code particle
+  const createCodeParticle = useCallback((): CodeParticle => {
+    const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+    return createCodeParticleWithCategory(category);
+  }, [createCodeParticleWithCategory]);
 
   // Game loop with mouse trails
   const gameLoop = useCallback(() => {
@@ -190,13 +205,22 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         life: trail.life - 0.02
       })).filter(trail => trail.life > 0);
 
-      // Draw trails
+      // Draw trails with beautiful boiling colors
       updatedTrails.forEach((trail, index) => {
         ctx.globalAlpha = trail.life;
-        ctx.fillStyle = trail.color;
-        ctx.beginPath();
-        ctx.arc(trail.x, trail.y, 8 * trail.life, 0, 2 * Math.PI);
-        ctx.fill();
+        
+        // Create boiling effect with multiple circles
+        for (let i = 0; i < 3; i++) {
+          const offset = i * 3;
+          const size = (8 - i * 2) * trail.life;
+          const hue = (Date.now() * 0.1 + offset + 180) % 360; // Different color spectrum
+          ctx.fillStyle = `hsl(${hue}, 100%, ${60 + i * 10}%)`;
+          ctx.beginPath();
+          ctx.arc(trail.x + Math.sin(Date.now() * 0.01 + offset) * 2, 
+                  trail.y + Math.cos(Date.now() * 0.01 + offset) * 2, 
+                  size, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       });
 
       ctx.globalAlpha = 1.0;
@@ -215,10 +239,14 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         // Draw code particle
         const isTarget = particle.category === targetCategory;
         
-        // Glow effect for target particles
+        // Strong glow effect for target particles
         if (isTarget && !particle.cut) {
           ctx.shadowColor = '#00ff00';
-          ctx.shadowBlur = 15;
+          ctx.shadowBlur = 20;
+          
+          // Extra glow ring
+          ctx.fillStyle = '#00ff0040';
+          ctx.fillRect(particle.x - particle.size - 5, particle.y - 20, particle.size * 2 + 10, 40);
         }
         
         // Background
@@ -227,7 +255,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         
         // Border with glow for target
         ctx.strokeStyle = isTarget ? '#00ff00' : '#9ca3af';
-        ctx.lineWidth = isTarget ? 3 : 1;
+        ctx.lineWidth = isTarget ? 4 : 1;
         ctx.strokeRect(particle.x - particle.size, particle.y - 15, particle.size * 2, 30);
         
         // Text
@@ -252,7 +280,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         return true;
       });
 
-      // Add new particles
+      // Add new particles more frequently
       while (updatedParticles.length < levelConfig.particleCount) {
         updatedParticles.push(createCodeParticle());
       }
@@ -274,9 +302,9 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
     const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-    // Add colorful mouse trail
+    // Add spectacular boiling colorful mouse trail
     setMouseTrails(prev => [
-      ...prev.slice(-20), // Keep only last 20 trails
+      ...prev.slice(-30), // Keep more trails for better effect
       {
         x: mouseX,
         y: mouseY,
@@ -300,13 +328,13 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
             if (particle.category === targetCategory) {
               setScore(prev => prev + 15);
               setParticlesCut(prev => prev + 1);
-              // Add explosion effect
-              for (let i = 0; i < 10; i++) {
+              // Add spectacular explosion effect
+              for (let i = 0; i < 15; i++) {
                 setMouseTrails(prev => [...prev, {
-                  x: particle.x + (Math.random() - 0.5) * 40,
-                  y: particle.y + (Math.random() - 0.5) * 40,
+                  x: particle.x + (Math.random() - 0.5) * 60,
+                  y: particle.y + (Math.random() - 0.5) * 60,
                   color: '#00ff00',
-                  life: 0.8
+                  life: 1.0
                 }]);
               }
             } else {
@@ -336,7 +364,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     if (isPlaying && targetCategory) {
       const interval = setInterval(() => {
         generateNewTarget();
-      }, 10000);
+      }, 15000); // Increased time between changes
       return () => clearInterval(interval);
     }
   }, [isPlaying, generateNewTarget, targetCategory]);
@@ -433,7 +461,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
               <canvas
                 ref={canvasRef}
                 width={600}
-                height={400}
+                height={300}
                 className="w-full bg-gradient-to-b from-gray-900/50 to-black/50 rounded-lg cursor-crosshair border-2 border-gray-700"
                 onMouseMove={handleMouseMove}
                 style={{ maxWidth: '100%', height: 'auto' }}
