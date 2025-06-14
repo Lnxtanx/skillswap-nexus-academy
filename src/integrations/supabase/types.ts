@@ -394,6 +394,54 @@ export type Database = {
           },
         ]
       }
+      user_voice_preferences: {
+        Row: {
+          accessibility_mode: boolean
+          auto_play: boolean
+          created_at: string
+          hands_free_mode: boolean
+          id: string
+          noise_cancellation: boolean
+          preferred_voice_id: string
+          selected_language: string
+          selected_persona: string
+          speech_speed: number
+          updated_at: string
+          user_id: string
+          volume: number
+        }
+        Insert: {
+          accessibility_mode?: boolean
+          auto_play?: boolean
+          created_at?: string
+          hands_free_mode?: boolean
+          id?: string
+          noise_cancellation?: boolean
+          preferred_voice_id?: string
+          selected_language?: string
+          selected_persona?: string
+          speech_speed?: number
+          updated_at?: string
+          user_id: string
+          volume?: number
+        }
+        Update: {
+          accessibility_mode?: boolean
+          auto_play?: boolean
+          created_at?: string
+          hands_free_mode?: boolean
+          id?: string
+          noise_cancellation?: boolean
+          preferred_voice_id?: string
+          selected_language?: string
+          selected_persona?: string
+          speech_speed?: number
+          updated_at?: string
+          user_id?: string
+          volume?: number
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           avatar_url: string | null

@@ -43,7 +43,7 @@ export const useVoicePreferences = () => {
       setIsLoading(true);
       
       if (user) {
-        // Try to load from database
+        // Try to load from database using direct query
         const { data, error } = await supabase
           .from('user_voice_preferences')
           .select('*')

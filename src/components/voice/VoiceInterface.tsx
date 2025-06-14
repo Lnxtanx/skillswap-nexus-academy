@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useConversation } from '@11labs/react';
 
 interface VoiceInterfaceProps {
   courseContent?: string;
@@ -32,34 +31,29 @@ interface VoiceInterfaceProps {
   disabled?: boolean;
 }
 
-// ElevenLabs voice configurations matched to Tavus personas
+// Voice configurations for different personas
 const VOICE_PERSONAS = {
   'code-master': {
-    voiceId: 'N2lVS1w4EtoT3dr4eOWO', // Callum - technical, clear
     name: 'Code Master',
     accent: 'British',
     personality: 'Professional, methodical'
   },
   'professor-pine': {
-    voiceId: 'JBFqnCBsd6RMkjVDRZzb', // George - academic, warm
     name: 'Professor Pine',
     accent: 'American',
     personality: 'Academic, enthusiastic'
   },
   'chef-charlie': {
-    voiceId: 'IKne3meq5aSn9XLyUdCD', // Charlie - friendly, warm
     name: 'Chef Charlie',
     accent: 'French',
     personality: 'Warm, encouraging'
   },
   'sensei-sam': {
-    voiceId: 'TX3LPaxmHKxFdv7VOQHJ', // Liam - strong, motivating
     name: 'Sensei Sam',
     accent: 'Japanese-English',
     personality: 'Disciplined, motivating'
   },
   'language-luna': {
-    voiceId: '9BWtsMINqrJLrRacOk9x', // Aria - multilingual, patient
     name: 'Language Luna',
     accent: 'Multilingual',
     personality: 'Patient, culturally aware'
@@ -118,56 +112,26 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  
-  // ElevenLabs conversation
-  const conversation = useConversation({
-    onConnect: () => {
-      toast({
-        title: "Voice AI Connected",
-        description: "You can now speak with your AI tutor",
-      });
-    },
-    onDisconnect: () => {
-      setIsSpeaking(false);
-      setIsListening(false);
-    },
-    onMessage: (message) => {
-      handleAIResponse(message);
-    },
-    onError: (error) => {
-      toast({
-        title: "Voice Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-    overrides: {
-      agent: {
-        language: selectedLanguage,
-      },
-      tts: {
-        voiceId: VOICE_PERSONAS[selectedPersona].voiceId
-      }
-    }
-  });
 
   // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = selectedLanguage;
-      
-      recognitionRef.current.onresult = handleSpeechResult;
-      recognitionRef.current.onerror = handleSpeechError;
-      recognitionRef.current.onend = () => {
-        if (isListening && !disabled) {
-          startListening();
-        }
-      };
+      if (recognitionRef.current) {
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = selectedLanguage;
+        
+        recognitionRef.current.onresult = handleSpeechResult;
+        recognitionRef.current.onerror = handleSpeechError;
+        recognitionRef.current.onend = () => {
+          if (isListening && !disabled) {
+            startListening();
+          }
+        };
+      }
     }
 
     speechSynthesisRef.current = window.speechSynthesis;
@@ -226,13 +190,8 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       }
     }
 
-    // Send to ElevenLabs conversation if it's a question or general command
-    if (conversation.status === 'connected') {
-      await conversation.sendMessage(transcript);
-    } else {
-      // Fallback to local TTS
-      speakText(`I heard: ${transcript}. Let me help you with that.`);
-    }
+    // Fallback response for unrecognized commands
+    speakText(`I heard: ${transcript}. Let me help you with that.`);
   };
 
   const handlePredefinedCommand = (command: string) => {
@@ -278,13 +237,6 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       case 'help':
         speakText(`Available voice commands: ${VOICE_COMMANDS.join(', ')}`);
         break;
-    }
-  };
-
-  const handleAIResponse = (message: any) => {
-    if (message.type === 'agent_response') {
-      // ElevenLabs handles the speech automatically
-      setIsSpeaking(true);
     }
   };
 
@@ -366,42 +318,6 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     setIsSpeaking(false);
   };
 
-  const startElevenLabsConversation = async () => {
-    try {
-      const conversationId = await conversation.startSession({
-        agentId: 'skillswap-ai-tutor', // You'll need to create this in ElevenLabs
-        overrides: {
-          agent: {
-            firstMessage: `Hello! I'm ${VOICE_PERSONAS[selectedPersona].name}, your AI tutor. How can I help you learn today?`,
-            language: selectedLanguage,
-          },
-          tts: {
-            voiceId: VOICE_PERSONAS[selectedPersona].voiceId
-          }
-        }
-      });
-      
-      toast({
-        title: "AI Conversation Started",
-        description: `Connected with ${VOICE_PERSONAS[selectedPersona].name}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Connection Failed",
-        description: "Could not connect to AI voice tutor",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const endElevenLabsConversation = async () => {
-    await conversation.endSession();
-    toast({
-      title: "AI Conversation Ended",
-      description: "Voice session completed",
-    });
-  };
-
   return (
     <div className="space-y-6">
       {/* Main Voice Controls */}
@@ -421,11 +337,6 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               {isSpeaking && (
                 <Badge variant="secondary" className="animate-pulse bg-blue-900 text-blue-300">
                   Speaking
-                </Badge>
-              )}
-              {conversation.status === 'connected' && (
-                <Badge className="bg-green-900 text-green-300">
-                  AI Connected
                 </Badge>
               )}
             </div>
@@ -454,15 +365,6 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
             >
               {isSpeaking ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
               {isSpeaking ? 'Stop Speaking' : 'Test Voice'}
-            </Button>
-
-            <Button
-              onClick={conversation.status === 'connected' ? endElevenLabsConversation : startElevenLabsConversation}
-              disabled={disabled}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              <Headphones className="mr-2 h-4 w-4" />
-              {conversation.status === 'connected' ? 'End AI Chat' : 'Start AI Chat'}
             </Button>
           </div>
 

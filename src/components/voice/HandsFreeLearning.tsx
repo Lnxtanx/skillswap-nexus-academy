@@ -80,30 +80,6 @@ const HandsFreeLearning: React.FC<HandsFreeLearningProps> = ({
     };
   }, [isPlaying, currentIndex, courseContent]);
 
-  // Handle device motion for pause detection (cooking mode)
-  useEffect(() => {
-    if (selectedMode === 'cooking' && pauseOnInteraction) {
-      const handleDeviceMotion = (event: DeviceMotionEvent) => {
-        const acceleration = event.accelerationIncludingGravity;
-        if (acceleration) {
-          const totalAcceleration = Math.sqrt(
-            Math.pow(acceleration.x || 0, 2) +
-            Math.pow(acceleration.y || 0, 2) +
-            Math.pow(acceleration.z || 0, 2)
-          );
-          
-          // If significant motion detected, pause for a moment
-          if (totalAcceleration > 15 && isPlaying) {
-            handleSmartPause('Motion detected - pausing for cooking activity');
-          }
-        }
-      };
-
-      window.addEventListener('devicemotion', handleDeviceMotion);
-      return () => window.removeEventListener('devicemotion', handleDeviceMotion);
-    }
-  }, [selectedMode, pauseOnInteraction, isPlaying]);
-
   const speakContent = (content: string) => {
     if (speechRef.current) {
       window.speechSynthesis.cancel();
@@ -200,21 +176,6 @@ const HandsFreeLearning: React.FC<HandsFreeLearningProps> = ({
     if (currentIndex > 0) {
       onIndexChange(currentIndex - 1);
     }
-  };
-
-  const handleSmartPause = (reason: string) => {
-    handlePause();
-    toast({
-      title: "Smart Pause",
-      description: reason,
-    });
-    
-    // Auto-resume after 10 seconds if no interaction
-    timeoutRef.current = setTimeout(() => {
-      if (!isPlaying) {
-        handlePlay();
-      }
-    }, 10000);
   };
 
   const handleVoiceCommand = (command: string) => {
