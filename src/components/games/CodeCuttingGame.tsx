@@ -140,31 +140,31 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     const side = Math.floor(Math.random() * 4);
     let x, y, vx, vy;
 
-    // Spawn from edges and move towards center with some randomness
+    // Spawn from edges and move towards center with improved trajectories
     switch (side) {
       case 0: // top
         x = Math.random() * canvas.width;
-        y = -50;
-        vx = (centerX - x) * 0.002 + (Math.random() - 0.5) * 0.5;
-        vy = Math.random() * 1.2 + 0.8;
+        y = -30;
+        vx = (centerX - x) * 0.001 + (Math.random() - 0.5) * 0.3;
+        vy = Math.random() * 0.8 + 1.0; // Slower downward movement
         break;
       case 1: // right
-        x = canvas.width + 50;
+        x = canvas.width + 30;
         y = Math.random() * canvas.height;
-        vx = -(Math.random() * 1.2 + 0.8);
-        vy = (centerY - y) * 0.002 + (Math.random() - 0.5) * 0.5;
+        vx = -(Math.random() * 0.8 + 1.0); // Slower leftward movement
+        vy = (centerY - y) * 0.001 + (Math.random() - 0.5) * 0.3;
         break;
       case 2: // bottom
         x = Math.random() * canvas.width;
-        y = canvas.height + 50;
-        vx = (centerX - x) * 0.002 + (Math.random() - 0.5) * 0.5;
-        vy = -(Math.random() * 1.2 + 0.8);
+        y = canvas.height + 30;
+        vx = (centerX - x) * 0.001 + (Math.random() - 0.5) * 0.3;
+        vy = -(Math.random() * 0.8 + 1.0); // Slower upward movement
         break;
       default: // left
-        x = -50;
+        x = -30;
         y = Math.random() * canvas.height;
-        vx = Math.random() * 1.2 + 0.8;
-        vy = (centerY - y) * 0.002 + (Math.random() - 0.5) * 0.5;
+        vx = Math.random() * 0.8 + 1.0; // Slower rightward movement
+        vy = (centerY - y) * 0.001 + (Math.random() - 0.5) * 0.3;
     }
 
     const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
@@ -249,24 +249,26 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
 
     // Update and draw particles with improved movement
     setParticles(prevParticles => {
+      console.log('Current code particle count:', prevParticles.length);
+      
       const updatedParticles = prevParticles.map(particle => {
         if (!particle.cut) {
           particle.x += particle.vx;
           particle.y += particle.vy;
           
-          // Reduced gravity for better control
-          particle.vy += 0.05;
+          // Very light gravity
+          particle.vy += 0.02;
           
-          // Add slight attraction to center to keep particles in play longer
+          // Enhanced attraction to center to keep particles in play
           const centerX = canvas.width / 2;
           const centerY = canvas.height / 2;
           const dx = centerX - particle.x;
           const dy = centerY - particle.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          if (distance > 100) {
-            particle.vx += (dx / distance) * 0.01;
-            particle.vy += (dy / distance) * 0.01;
+          if (distance > 150) {
+            particle.vx += (dx / distance) * 0.02;
+            particle.vy += (dy / distance) * 0.02;
           }
         }
 
@@ -305,9 +307,9 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
 
         return particle;
       }).filter(particle => {
-        // More lenient boundary removal
-        if (particle.x < -150 || particle.x > canvas.width + 150 || 
-            particle.y < -150 || particle.y > canvas.height + 150) {
+        // Much more lenient boundary removal - particles stay much longer
+        if (particle.x < -200 || particle.x > canvas.width + 200 || 
+            particle.y < -200 || particle.y > canvas.height + 200) {
           if (!particle.cut && particle.category === targetCategory && checkDirectionMatch(particle)) {
             setParticlesMissed(prev => prev + 1);
           }
@@ -316,11 +318,18 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         return true;
       });
 
-      // Maintain particle count
-      while (updatedParticles.length < levelConfig.particleCount) {
+      // Always maintain minimum particle count - spawn more aggressively
+      const particlesToAdd = Math.max(0, levelConfig.particleCount - updatedParticles.length);
+      for (let i = 0; i < particlesToAdd; i++) {
         updatedParticles.push(createCodeParticle());
       }
 
+      // Add extra particles randomly to keep the game active
+      if (Math.random() < 0.3 && updatedParticles.length < levelConfig.particleCount + 5) {
+        updatedParticles.push(createCodeParticle());
+      }
+
+      console.log('Final code particle count:', updatedParticles.length);
       return updatedParticles;
     });
 
@@ -360,7 +369,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
             Math.pow(mouseX - particle.x, 2) + Math.pow(mouseY - particle.y, 2)
           );
 
-          if (distance < particle.size + 10) {
+          if (distance < particle.size + 15) { // Slightly larger hit area
             particle.cut = true;
             
             const isValidTarget = particle.category === targetCategory && checkDirectionMatch(particle);
@@ -422,11 +431,25 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     };
   }, [isPlaying, gameLoop]);
 
+  // Initialize particles when game starts
+  useEffect(() => {
+    if (isPlaying && particles.length === 0) {
+      console.log('Initializing code particles...');
+      const initialParticles = [];
+      for (let i = 0; i < levelConfig.particleCount; i++) {
+        initialParticles.push(createCodeParticle());
+      }
+      setParticles(initialParticles);
+      console.log('Initialized code particles:', initialParticles.length);
+    }
+  }, [isPlaying, levelConfig.particleCount, createCodeParticle]);
+
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
 
   const startGame = () => {
+    console.log('Starting code cutting game...');
     setIsPlaying(true);
     setScore(0);
     setParticlesCut(0);
@@ -512,6 +535,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
             )}
             <Badge variant="outline" className="text-white">Score: {score}</Badge>
             <Badge variant="secondary">Time: {timeLeft}s</Badge>
+            <Badge variant="outline" className="text-green-400">Particles: {particles.length}</Badge>
           </div>
           
           <div className="flex space-x-2">
@@ -642,6 +666,10 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Time:</span>
                 <span className="text-white">{timeLeft}s</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Particles:</span>
+                <span className="text-blue-400">{particles.length}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Cut:</span>
