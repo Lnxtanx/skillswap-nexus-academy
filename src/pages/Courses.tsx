@@ -3,73 +3,104 @@ import React, { useState } from 'react';
 import CourseCard from '@/components/CourseCard';
 import SearchBar from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 const Courses = () => {
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLevel, setSelectedLevel] = useState('all');
 
   const categories = [
-    'all', 'Programming', 'Design', 'Business', 'Marketing', 'Data Science', 'Photography'
+    'all', 'Programming', 'Science', 'Cooking', 'Physical', 'Language'
   ];
 
   const levels = ['all', 'Beginner', 'Intermediate', 'Advanced'];
 
+  // AI-powered courses matching our 5 personas
   const courses = [
     {
-      title: "Complete React Development Course",
-      instructor: "Sarah Johnson",
+      id: 1,
+      title: "Complete React Development with AI Tutor",
+      instructor: "Code Master 🧑‍💻",
       price: "$99",
       level: "Intermediate" as const,
-      rating: 4.8,
+      rating: 4.9,
       students: 2341,
-      duration: "8 weeks"
+      duration: "8 weeks",
+      category: "programming",
+      description: "Learn React with personalized AI guidance from Code Master",
+      hasAITutor: true
     },
     {
-      title: "Python for Data Science",
-      instructor: "Dr. Michael Chen",
+      id: 2,
+      title: "Python Programming Fundamentals",
+      instructor: "Code Master 🧑‍💻",
       price: "$79",
       level: "Beginner" as const,
-      rating: 4.9,
+      rating: 4.8,
       students: 1876,
-      duration: "6 weeks"
+      duration: "6 weeks",
+      category: "programming",
+      description: "Master Python basics with AI-powered learning",
+      hasAITutor: true
     },
     {
-      title: "Advanced UI/UX Design",
-      instructor: "Emma Rodriguez",
+      id: 3,
+      title: "Physics & Chemistry Mastery",
+      instructor: "Professor Pine 👨‍🔬",
       price: "$129",
-      level: "Advanced" as const,
-      rating: 4.7,
-      students: 945,
-      duration: "10 weeks"
+      level: "Intermediate" as const,
+      rating: 4.9,
+      students: 1203,
+      duration: "10 weeks",
+      category: "science",
+      description: "Explore sciences with Professor Pine's expert guidance",
+      hasAITutor: true
     },
     {
-      title: "Digital Marketing Mastery",
-      instructor: "James Wilson",
+      id: 4,
+      title: "Culinary Arts & French Cuisine",
+      instructor: "Chef Charlie 👨‍🍳",
+      price: "$149",
+      level: "Beginner" as const,
+      rating: 4.8,
+      students: 892,
+      duration: "8 weeks",
+      category: "cooking",
+      description: "Learn professional cooking techniques with Chef Charlie",
+      hasAITutor: true
+    },
+    {
+      id: 5,
+      title: "Martial Arts & Fitness Training",
+      instructor: "Sensei Sam 🥋",
+      price: "$119",
+      level: "Beginner" as const,
+      rating: 4.7,
+      students: 1534,
+      duration: "12 weeks",
+      category: "physical",
+      description: "Master martial arts and physical fitness with Sensei Sam",
+      hasAITutor: true
+    },
+    {
+      id: 6,
+      title: "Multilingual Communication Skills",
+      instructor: "Language Luna 🗣️",
       price: "$89",
       level: "Beginner" as const,
-      rating: 4.6,
-      students: 1534,
-      duration: "5 weeks"
-    },
-    {
-      title: "Full-Stack JavaScript",
-      instructor: "Alex Kim",
-      price: "$149",
-      level: "Advanced" as const,
-      rating: 4.9,
-      students: 892,
-      duration: "12 weeks"
-    },
-    {
-      title: "Photography Fundamentals",
-      instructor: "Maria Santos",
-      price: "$69",
-      level: "Beginner" as const,
-      rating: 4.5,
-      students: 1203,
-      duration: "4 weeks"
+      rating: 4.8,
+      students: 1456,
+      duration: "6 weeks",
+      category: "language",
+      description: "Learn multiple languages with Luna's cultural expertise",
+      hasAITutor: true
     }
   ];
+
+  const handleStartAITutor = (courseId: number) => {
+    navigate(`/tutor/${courseId}`);
+  };
 
   return (
     <div className="min-h-screen pt-20">
@@ -77,10 +108,10 @@ const Courses = () => {
       <section className="py-16 hero-gradient">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
-            All Courses
+            AI-Powered Courses
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-            Discover thousands of courses from expert instructors and start your learning journey today
+            Learn with personalized AI tutors that adapt to your learning style and pace
           </p>
           <SearchBar onSearch={(query) => console.log('Searching:', query)} />
         </div>
@@ -145,10 +176,10 @@ const Courses = () => {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                {courses.length} Courses Found
+                {courses.length} AI-Powered Courses
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
-                Showing courses for all categories and levels
+                Each course includes a dedicated AI tutor for personalized learning
               </p>
             </div>
             
@@ -163,17 +194,47 @@ const Courses = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {courses.map((course, index) => (
-              <div key={index} className="animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <CourseCard {...course} />
+              <div key={course.id} className="animate-slide-up relative" style={{ animationDelay: `${index * 0.1}s` }}>
+                <div className="glass-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl">{course.instructor.split(' ').pop()}</span>
+                    <span className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      AI Tutor
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                    {course.title}
+                  </h3>
+                  
+                  <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
+                    {course.description}
+                  </p>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-lg font-bold gradient-text">{course.price}</span>
+                    <span className="text-sm text-gray-500">{course.duration}</span>
+                  </div>
+                  
+                  <div className="flex items-center mb-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span>⭐ {course.rating}</span>
+                    <span className="mx-2">•</span>
+                    <span>{course.students} students</span>
+                    <span className="mx-2">•</span>
+                    <span>{course.level}</span>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      className="flex-1 bg-gradient-to-r from-primary-500 to-secondary-500"
+                      onClick={() => handleStartAITutor(course.id)}
+                    >
+                      Start with AI Tutor
+                    </Button>
+                  </div>
+                </div>
               </div>
             ))}
-          </div>
-
-          {/* Load More */}
-          <div className="text-center mt-12">
-            <Button size="lg" variant="outline" className="glass border-white/30 hover:bg-white/10 px-8">
-              Load More Courses
-            </Button>
           </div>
         </div>
       </section>
