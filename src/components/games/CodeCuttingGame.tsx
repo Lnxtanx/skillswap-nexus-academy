@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Play, Pause, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, Maximize, Minimize } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,12 +40,13 @@ const CODE_SNIPPETS = {
 };
 
 const CATEGORIES = Object.keys(CODE_SNIPPETS);
+const DIRECTIONS = ['left', 'right', 'top', 'bottom'];
 const LEVELS = [
-  { level: 1, speed: 1, particleCount: 6, timeLimit: 60 },
-  { level: 2, speed: 1.5, particleCount: 8, timeLimit: 90 },
-  { level: 3, speed: 2, particleCount: 10, timeLimit: 120 },
-  { level: 4, speed: 2.5, particleCount: 12, timeLimit: 150 },
-  { level: 5, speed: 3, particleCount: 15, timeLimit: 180 }
+  { level: 1, speed: 0.5, particleCount: 12, timeLimit: 120 },
+  { level: 2, speed: 0.7, particleCount: 15, timeLimit: 150 },
+  { level: 3, speed: 0.9, particleCount: 18, timeLimit: 180 },
+  { level: 4, speed: 1.1, particleCount: 22, timeLimit: 200 },
+  { level: 5, speed: 1.3, particleCount: 25, timeLimit: 240 }
 ];
 
 const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
@@ -55,11 +57,13 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
   
   const [currentLevel, setCurrentLevel] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [score, setScore] = useState(0);
   const [particles, setParticles] = useState<CodeParticle[]>([]);
   const [mouseTrails, setMouseTrails] = useState<MouseTrail[]>([]);
   const [targetCategory, setTargetCategory] = useState<string>('');
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [targetDirection, setTargetDirection] = useState<string>('');
+  const [timeLeft, setTimeLeft] = useState(120);
   const [particlesCut, setParticlesCut] = useState(0);
   const [particlesMissed, setParticlesMissed] = useState(0);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
@@ -114,26 +118,24 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     }
   }, []);
 
-  // Generate new target category and ensure it appears in the game
+  // Generate new target with direction commands
   const generateNewTarget = useCallback(() => {
     const newCategory = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+    const shouldAddDirection = Math.random() < 0.4; // 40% chance for direction
+    const direction = shouldAddDirection ? DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)] : '';
+    
     setTargetCategory(newCategory);
-    speakInstruction(`Cut all ${newCategory} code snippets!`);
-
-    // Force spawn some target category particles
-    setTimeout(() => {
-      setParticles(prevParticles => {
-        const targetParticles = [...prevParticles];
-        for (let i = 0; i < 3; i++) {
-          targetParticles.push(createCodeParticleWithCategory(newCategory));
-        }
-        return targetParticles;
-      });
-    }, 1000);
+    setTargetDirection(direction);
+    
+    const instruction = direction 
+      ? `Cut ${newCategory} code from the ${direction}!`
+      : `Cut all ${newCategory} code snippets!`;
+    
+    speakInstruction(instruction);
   }, [speakInstruction]);
 
-  // Create new code particle with specific category
-  const createCodeParticleWithCategory = useCallback((category: string): CodeParticle => {
+  // Create new code particle with random category
+  const createCodeParticle = useCallback((): CodeParticle => {
     const canvas = canvasRef.current;
     if (!canvas) return {} as CodeParticle;
 
@@ -144,28 +146,29 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
       case 0: // top
         x = Math.random() * canvas.width;
         y = -50;
-        vx = (Math.random() - 0.5) * 3;
-        vy = Math.random() * 2 + 1.5;
+        vx = (Math.random() - 0.5) * 2;
+        vy = Math.random() * 1.5 + 1;
         break;
       case 1: // right
         x = canvas.width + 50;
         y = Math.random() * canvas.height;
-        vx = -(Math.random() * 2 + 1.5);
-        vy = (Math.random() - 0.5) * 3;
+        vx = -(Math.random() * 1.5 + 1);
+        vy = (Math.random() - 0.5) * 2;
         break;
       case 2: // bottom
         x = Math.random() * canvas.width;
         y = canvas.height + 50;
-        vx = (Math.random() - 0.5) * 3;
-        vy = -(Math.random() * 2 + 1.5);
+        vx = (Math.random() - 0.5) * 2;
+        vy = -(Math.random() * 1.5 + 1);
         break;
       default: // left
         x = -50;
         y = Math.random() * canvas.height;
-        vx = Math.random() * 2 + 1.5;
-        vy = (Math.random() - 0.5) * 3;
+        vx = Math.random() * 1.5 + 1;
+        vy = (Math.random() - 0.5) * 2;
     }
 
+    const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
     const codeSnippets = CODE_SNIPPETS[category];
     const code = codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
 
@@ -182,11 +185,29 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     };
   }, [levelConfig.speed]);
 
-  // Create new code particle
-  const createCodeParticle = useCallback((): CodeParticle => {
-    const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
-    return createCodeParticleWithCategory(category);
-  }, [createCodeParticleWithCategory]);
+  // Check if particle matches direction requirement
+  const checkDirectionMatch = useCallback((particle: CodeParticle) => {
+    if (!targetDirection) return true;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return true;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    switch (targetDirection) {
+      case 'left':
+        return particle.x < centerX;
+      case 'right':
+        return particle.x > centerX;
+      case 'top':
+        return particle.y < centerY;
+      case 'bottom':
+        return particle.y > centerY;
+      default:
+        return true;
+    }
+  }, [targetDirection]);
 
   // Game loop with mouse trails
   const gameLoop = useCallback(() => {
@@ -233,14 +254,16 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         if (!particle.cut) {
           particle.x += particle.vx;
           particle.y += particle.vy;
-          particle.vy += 0.15; // gravity
+          particle.vy += 0.1; // gravity
         }
 
         // Draw code particle
         const isTarget = particle.category === targetCategory;
+        const isDirectionMatch = checkDirectionMatch(particle);
+        const isValidTarget = isTarget && isDirectionMatch;
         
-        // Strong glow effect for target particles
-        if (isTarget && !particle.cut) {
+        // Strong glow effect for valid target particles
+        if (isValidTarget && !particle.cut) {
           ctx.shadowColor = '#00ff00';
           ctx.shadowBlur = 20;
           
@@ -250,12 +273,12 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         }
         
         // Background
-        ctx.fillStyle = particle.cut ? '#333' : (isTarget ? '#0066cc' : '#4a5568');
+        ctx.fillStyle = particle.cut ? '#333' : (isValidTarget ? '#0066cc' : '#4a5568');
         ctx.fillRect(particle.x - particle.size, particle.y - 15, particle.size * 2, 30);
         
         // Border with glow for target
-        ctx.strokeStyle = isTarget ? '#00ff00' : '#9ca3af';
-        ctx.lineWidth = isTarget ? 4 : 1;
+        ctx.strokeStyle = isValidTarget ? '#00ff00' : '#9ca3af';
+        ctx.lineWidth = isValidTarget ? 4 : 1;
         ctx.strokeRect(particle.x - particle.size, particle.y - 15, particle.size * 2, 30);
         
         // Text
@@ -272,7 +295,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         // Remove particles that are off screen
         if (particle.x < -100 || particle.x > canvas.width + 100 || 
             particle.y < -100 || particle.y > canvas.height + 100) {
-          if (!particle.cut && particle.category === targetCategory) {
+          if (!particle.cut && particle.category === targetCategory && checkDirectionMatch(particle)) {
             setParticlesMissed(prev => prev + 1);
           }
           return false;
@@ -280,7 +303,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         return true;
       });
 
-      // Add new particles more frequently
+      // Add new particles continuously
       while (updatedParticles.length < levelConfig.particleCount) {
         updatedParticles.push(createCodeParticle());
       }
@@ -291,7 +314,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     if (isPlaying) {
       animationRef.current = requestAnimationFrame(gameLoop);
     }
-  }, [isPlaying, targetCategory, levelConfig.particleCount, createCodeParticle]);
+  }, [isPlaying, targetCategory, levelConfig.particleCount, createCodeParticle, checkDirectionMatch]);
 
   // Handle mouse move for cutting and trails
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -304,7 +327,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
 
     // Add spectacular boiling colorful mouse trail
     setMouseTrails(prev => [
-      ...prev.slice(-30), // Keep more trails for better effect
+      ...prev.slice(-40), // Keep more trails for better effect
       {
         x: mouseX,
         y: mouseY,
@@ -325,27 +348,29 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
           if (distance < particle.size) {
             particle.cut = true;
             
-            if (particle.category === targetCategory) {
+            const isValidTarget = particle.category === targetCategory && checkDirectionMatch(particle);
+            
+            if (isValidTarget) {
               setScore(prev => prev + 15);
               setParticlesCut(prev => prev + 1);
               // Add spectacular explosion effect
-              for (let i = 0; i < 15; i++) {
+              for (let i = 0; i < 20; i++) {
                 setMouseTrails(prev => [...prev, {
-                  x: particle.x + (Math.random() - 0.5) * 60,
-                  y: particle.y + (Math.random() - 0.5) * 60,
+                  x: particle.x + (Math.random() - 0.5) * 80,
+                  y: particle.y + (Math.random() - 0.5) * 80,
                   color: '#00ff00',
                   life: 1.0
                 }]);
               }
             } else {
-              setScore(prev => Math.max(0, prev - 5));
+              setScore(prev => Math.max(0, prev - 3));
             }
           }
         }
         return particle;
       })
     );
-  }, [isPlaying, targetCategory]);
+  }, [isPlaying, targetCategory, checkDirectionMatch]);
 
   // Timer effect
   useEffect(() => {
@@ -364,7 +389,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     if (isPlaying && targetCategory) {
       const interval = setInterval(() => {
         generateNewTarget();
-      }, 15000); // Increased time between changes
+      }, 8000); // Change target every 8 seconds
       return () => clearInterval(interval);
     }
   }, [isPlaying, generateNewTarget, targetCategory]);
@@ -381,6 +406,10 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     };
   }, [isPlaying, gameLoop]);
 
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
   const startGame = () => {
     setIsPlaying(true);
     setScore(0);
@@ -390,6 +419,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     setGameStartTime(Date.now());
     setParticles([]);
     setMouseTrails([]);
+    setIsFullscreen(true); // Auto fullscreen when game starts
     generateNewTarget();
     speakInstruction(`Level ${currentLevel} starting! Get ready to slice code!`);
   };
@@ -400,6 +430,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
 
   const endGame = async () => {
     setIsPlaying(false);
+    setIsFullscreen(false); // Exit fullscreen when game ends
     const timeTaken = Math.round((Date.now() - gameStartTime) / 1000);
     const accuracy = particlesCut > 0 ? (particlesCut / (particlesCut + particlesMissed)) * 100 : 0;
 
@@ -431,6 +462,7 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
 
   const resetGame = () => {
     setIsPlaying(false);
+    setIsFullscreen(false);
     setScore(0);
     setParticlesCut(0);
     setParticlesMissed(0);
@@ -438,7 +470,66 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
     setParticles([]);
     setMouseTrails([]);
     setTargetCategory('');
+    setTargetDirection('');
   };
+
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 bg-black z-50 flex flex-col">
+        {/* Fullscreen Header */}
+        <div className="flex items-center justify-between p-4 bg-gray-900">
+          <div className="flex items-center space-x-4">
+            <Button onClick={toggleFullscreen} className="bg-gray-700 hover:bg-gray-600 text-white">
+              <Minimize className="h-4 w-4" />
+            </Button>
+            <h1 className="text-xl font-bold text-white">Code Cutting Game</h1>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {targetCategory && (
+              <div className="flex items-center space-x-2">
+                <Badge className="bg-blue-600 text-white">
+                  {targetCategory}
+                </Badge>
+                <span className="text-white font-bold">
+                  Cut {targetCategory}{targetDirection && ` from ${targetDirection}`}!
+                </span>
+              </div>
+            )}
+            <Badge variant="outline" className="text-white">Score: {score}</Badge>
+            <Badge variant="secondary">Time: {timeLeft}s</Badge>
+          </div>
+          
+          <div className="flex space-x-2">
+            <Button
+              onClick={pauseGame}
+              disabled={!isPlaying}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+            >
+              <Pause className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={resetGame}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Fullscreen Canvas */}
+        <div className="flex-1">
+          <canvas
+            ref={canvasRef}
+            width={window.innerWidth}
+            height={window.innerHeight - 80}
+            className="w-full h-full bg-gradient-to-b from-gray-900/50 to-black/50 cursor-crosshair"
+            onMouseMove={handleMouseMove}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -458,10 +549,20 @@ const CodeCuttingGame: React.FC<CodeCuttingGameProps> = ({ onBack }) => {
         <div className="lg:col-span-3">
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white text-sm">Code Arena</span>
+                <Button
+                  onClick={toggleFullscreen}
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Maximize className="h-4 w-4" />
+                </Button>
+              </div>
               <canvas
                 ref={canvasRef}
-                width={600}
-                height={300}
+                width={800}
+                height={400}
                 className="w-full bg-gradient-to-b from-gray-900/50 to-black/50 rounded-lg cursor-crosshair border-2 border-gray-700"
                 onMouseMove={handleMouseMove}
                 style={{ maxWidth: '100%', height: 'auto' }}
