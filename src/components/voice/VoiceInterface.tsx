@@ -157,9 +157,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     }
   };
 
-  const handleSpeechResult = (event: SpeechRecognitionEvent) => {
+  const handleSpeechResult = (event: any) => {
     const transcript = Array.from(event.results)
-      .map(result => result[0].transcript)
+      .map((result: any) => result[0].transcript)
       .join(' ')
       .toLowerCase()
       .trim();
@@ -169,7 +169,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     }
   };
 
-  const handleSpeechError = (event: SpeechRecognitionErrorEvent) => {
+  const handleSpeechError = (event: any) => {
     toast({
       title: "Speech Recognition Error",
       description: `Error: ${event.error}`,
