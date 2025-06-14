@@ -23,6 +23,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoicePreferences } from '@/hooks/useVoicePreferences';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VoiceInterfaceProps {
   courseContent?: string;
@@ -30,6 +31,8 @@ interface VoiceInterfaceProps {
   onVoiceCommand?: (command: string) => void;
   isHandsFreeMode?: boolean;
   disabled?: boolean;
+  courseCategory?: string;
+  courseTitle?: string;
 }
 
 // Voice configurations for different personas
@@ -37,44 +40,34 @@ const VOICE_PERSONAS = {
   'code-master': {
     name: 'Code Master',
     accent: 'British',
-    personality: 'Professional, methodical'
+    personality: 'Professional, methodical programming instructor',
+    introduction: 'Hello! I am Code Master, your programming instructor. I specialize in teaching coding languages and software development. What would you like to learn today?'
   },
   'professor-pine': {
     name: 'Professor Pine',
     accent: 'American',
-    personality: 'Academic, enthusiastic'
+    personality: 'Academic, enthusiastic science educator',
+    introduction: 'Greetings! I am Professor Pine, your science instructor. I love exploring the wonders of physics, chemistry, and biology. Ready to discover something amazing?'
   },
   'chef-charlie': {
     name: 'Chef Charlie',
     accent: 'French',
-    personality: 'Warm, encouraging'
+    personality: 'Warm, encouraging culinary expert',
+    introduction: 'Bonjour! I am Chef Charlie, your culinary instructor. I will teach you the art of cooking and the secrets of great cuisine. Shall we begin our culinary journey?'
   },
   'sensei-sam': {
     name: 'Sensei Sam',
     accent: 'Japanese-English',
-    personality: 'Disciplined, motivating'
+    personality: 'Disciplined, motivating fitness trainer',
+    introduction: 'Welcome, student. I am Sensei Sam, your fitness and martial arts instructor. Together we will strengthen both your body and mind. Are you ready to train?'
   },
   'language-luna': {
     name: 'Language Luna',
     accent: 'Multilingual',
-    personality: 'Patient, culturally aware'
+    personality: 'Patient, culturally aware language teacher',
+    introduction: '¡Hola! Bonjour! I am Language Luna, your language instructor. I will help you master new languages and explore different cultures. What language shall we practice today?'
   }
 };
-
-const VOICE_COMMANDS = [
-  'next lesson',
-  'previous lesson',
-  'repeat that',
-  'quiz me',
-  'take notes',
-  'pause',
-  'resume',
-  'slower',
-  'faster',
-  'explain this',
-  'summary',
-  'help'
-];
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -88,12 +81,44 @@ const LANGUAGES = [
   { code: 'zh', name: 'Chinese' }
 ];
 
+const WaveAnimation: React.FC<{ isListening: boolean; isSpeaking: boolean }> = ({ isListening, isSpeaking }) => {
+  return (
+    <div className="flex items-center justify-center h-32 bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-lg overflow-hidden relative">
+      <div className="flex items-center space-x-1">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className={`w-1 bg-gradient-to-t from-blue-400 to-purple-400 rounded-full transition-all duration-200 ${
+              isListening || isSpeaking ? 'animate-pulse' : ''
+            }`}
+            style={{
+              height: `${
+                isListening 
+                  ? Math.random() * 60 + 20
+                  : isSpeaking 
+                    ? Math.sin((Date.now() / 100) + i) * 30 + 40
+                    : 20
+              }px`,
+              animationDelay: `${i * 50}ms`,
+              animationDuration: isListening ? '0.5s' : '1s'
+            }}
+          />
+        ))}
+      </div>
+      {(isListening || isSpeaking) && (
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 animate-pulse" />
+      )}
+    </div>
+  );
+};
+
 const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   courseContent = '',
   currentLesson = '',
   onVoiceCommand,
-  isHandsFreeMode = false,
-  disabled = false
+  disabled = false,
+  courseCategory = 'programming',
+  courseTitle = ''
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -102,11 +127,16 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [hasIntroduced, setHasIntroduced] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<any[]>([]);
   
   // Voice recognition
   const recognitionRef = useRef<any>(null);
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Get current persona based on course category
+  const currentPersona = VOICE_PERSONAS[courseCategory] || VOICE_PERSONAS['code-master'];
 
   // Initialize speech recognition
   useEffect(() => {
@@ -137,20 +167,22 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     };
   }, [preferences.selectedLanguage, isListening, disabled]);
 
-  // Audio context for noise cancellation
+  // Introduce the AI tutor when component mounts
   useEffect(() => {
-    if (preferences.noiseCancellation) {
-      initializeAudioContext();
+    if (!hasIntroduced && courseTitle) {
+      const introduction = `${currentPersona.introduction} Today we'll be working on ${courseTitle}. How can I help you with your learning?`;
+      setTimeout(() => {
+        speakText(introduction);
+        setHasIntroduced(true);
+        setConversationHistory([{
+          id: Date.now(),
+          type: 'ai',
+          content: introduction,
+          timestamp: new Date().toISOString()
+        }]);
+      }, 1000);
     }
-  }, [preferences.noiseCancellation]);
-
-  const initializeAudioContext = async () => {
-    try {
-      audioContextRef.current = new AudioContext();
-    } catch (error) {
-      console.error('Audio context initialization failed:', error);
-    }
-  };
+  }, [courseTitle, hasIntroduced]);
 
   const handleSpeechResult = (event: any) => {
     const transcript = Array.from(event.results)
@@ -174,64 +206,52 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   };
 
   const processVoiceCommand = async (transcript: string) => {
-    const command = transcript.toLowerCase();
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: transcript,
+      timestamp: new Date().toISOString()
+    };
     
-    // Check for predefined commands
-    for (const cmd of VOICE_COMMANDS) {
-      if (command.includes(cmd)) {
-        handlePredefinedCommand(cmd);
-        onVoiceCommand?.(cmd);
+    setConversationHistory(prev => [...prev, userMessage]);
+
+    try {
+      // Call Gemini API through Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+        body: { 
+          message: transcript,
+          context: {
+            persona: currentPersona.name,
+            personality: currentPersona.personality,
+            course: courseTitle,
+            category: courseCategory,
+            lesson: currentLesson,
+            conversationHistory: conversationHistory.slice(-5) // Last 5 messages for context
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Gemini API error:', error);
+        speakText("I'm sorry, I'm having trouble processing your request right now. Please try again.");
         return;
       }
-    }
 
-    // Fallback response for unrecognized commands
-    speakText(`I heard: ${transcript}. Let me help you with that.`);
-  };
+      const aiResponse = data?.response || "I didn't quite understand that. Could you please rephrase your question?";
+      
+      const aiMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: aiResponse,
+        timestamp: new Date().toISOString()
+      };
+      
+      setConversationHistory(prev => [...prev, aiMessage]);
+      speakText(aiResponse);
 
-  const handlePredefinedCommand = (command: string) => {
-    switch (command) {
-      case 'next lesson':
-        speakText('Moving to the next lesson');
-        break;
-      case 'previous lesson':
-        speakText('Going back to the previous lesson');
-        break;
-      case 'repeat that':
-        if (courseContent) {
-          speakText(courseContent);
-        }
-        break;
-      case 'quiz me':
-        speakText('Starting a quick quiz. Are you ready?');
-        break;
-      case 'take notes':
-        speakText('Note taking mode activated. Please dictate your notes.');
-        break;
-      case 'pause':
-        stopSpeaking();
-        speakText('Paused');
-        break;
-      case 'resume':
-        speakText('Resuming');
-        break;
-      case 'slower':
-        updateSpeechSpeed(Math.max(0.5, preferences.speechSpeed - 0.1));
-        speakText('Speaking slower');
-        break;
-      case 'faster':
-        updateSpeechSpeed(Math.min(2.0, preferences.speechSpeed + 0.1));
-        speakText('Speaking faster');
-        break;
-      case 'explain this':
-        speakText(`Let me explain this topic in more detail: ${currentLesson}`);
-        break;
-      case 'summary':
-        speakText('Here is a summary of what we have covered so far');
-        break;
-      case 'help':
-        speakText(`Available voice commands: ${VOICE_COMMANDS.join(', ')}`);
-        break;
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+      speakText("I'm sorry, I encountered an error. Please try asking your question again.");
     }
   };
 
@@ -246,7 +266,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     // Set voice based on selected persona
     const voices = speechSynthesisRef.current.getVoices();
     const selectedVoice = voices.find(voice => 
-      voice.name.includes(VOICE_PERSONAS[preferences.selectedPersona].accent) ||
+      voice.name.includes(currentPersona.accent) ||
       voice.lang.startsWith(preferences.selectedLanguage)
     );
     
@@ -272,19 +292,14 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     if (!recognitionRef.current || disabled) return;
 
     try {
-      // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
       
       recognitionRef.current.start();
       setIsListening(true);
       
-      if (preferences.accessibilityMode) {
-        speakText('Voice recognition started. I am listening.');
-      }
-      
       toast({
         title: "Voice Recognition Started",
-        description: "Speak your commands or questions",
+        description: "Ask me anything about your course!",
       });
     } catch (error) {
       toast({
@@ -293,17 +308,13 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         variant: "destructive",
       });
     }
-  }, [disabled, preferences.accessibilityMode]);
+  }, [disabled]);
 
   const stopListening = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
     setIsListening(false);
-    
-    if (preferences.accessibilityMode) {
-      speakText('Voice recognition stopped.');
-    }
   };
 
   const stopSpeaking = () => {
@@ -315,13 +326,13 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Main Voice Controls */}
+      {/* AI Tutor Introduction */}
       <Card className="bg-gray-900 border-gray-800">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-white flex items-center">
-              <Headphones className="mr-2 h-5 w-5 text-blue-400" />
-              Voice AI Assistant
+              <span className="text-2xl mr-3">🤖</span>
+              Meet Your AI Tutor: {currentPersona.name}
             </CardTitle>
             <div className="flex items-center space-x-2">
               {isListening && (
@@ -338,8 +349,13 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-gray-300">{currentPersona.personality}</p>
+          
+          {/* Wave Animation */}
+          <WaveAnimation isListening={isListening} isSpeaking={isSpeaking} />
+          
           {/* Voice Control Buttons */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Button
               onClick={isListening ? stopListening : startListening}
               disabled={disabled}
@@ -347,55 +363,53 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
                 isListening 
                   ? 'bg-red-600 hover:bg-red-700' 
                   : 'bg-blue-600 hover:bg-blue-700'
-              } text-white`}
+              } text-white px-6 py-3`}
+              size="lg"
             >
-              {isListening ? <MicOff className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-              {isListening ? 'Stop Listening' : 'Start Listening'}
+              {isListening ? <MicOff className="mr-2 h-5 w-5" /> : <Mic className="mr-2 h-5 w-5" />}
+              {isListening ? 'Stop Listening' : 'Ask Question'}
             </Button>
 
             <Button
-              onClick={isSpeaking ? stopSpeaking : () => speakText(courseContent || 'Hello, I am your AI voice assistant')}
+              onClick={isSpeaking ? stopSpeaking : () => speakText(currentPersona.introduction)}
               disabled={disabled}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3"
+              size="lg"
             >
-              {isSpeaking ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
-              {isSpeaking ? 'Stop Speaking' : 'Test Voice'}
+              {isSpeaking ? <VolumeX className="mr-2 h-5 w-5" /> : <Volume2 className="mr-2 h-5 w-5" />}
+              {isSpeaking ? 'Stop Speaking' : 'Hear Introduction'}
             </Button>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Quick Action Buttons */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Button
-              size="sm"
-              onClick={() => processVoiceCommand('quiz me')}
-              className="bg-gray-800 hover:bg-gray-700 text-white"
-            >
-              <BookOpen className="mr-1 h-3 w-3" />
-              Quiz Me
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => processVoiceCommand('repeat that')}
-              className="bg-gray-800 hover:bg-gray-700 text-white"
-            >
-              <RotateCcw className="mr-1 h-3 w-3" />
-              Repeat
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => processVoiceCommand('next lesson')}
-              className="bg-gray-800 hover:bg-gray-700 text-white"
-            >
-              <SkipForward className="mr-1 h-3 w-3" />
-              Next
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => processVoiceCommand('help')}
-              className="bg-gray-800 hover:bg-gray-700 text-white"
-            >
-              Help
-            </Button>
+      {/* Conversation History */}
+      <Card className="bg-gray-900 border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Conversation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 overflow-y-auto mb-4 space-y-3">
+            {conversationHistory.map((message) => (
+              <div
+                key={message.id}
+                className={`p-3 rounded-lg ${
+                  message.type === 'user'
+                    ? 'bg-blue-900 text-white ml-4'
+                    : 'bg-gray-800 text-white mr-4'
+                }`}
+              >
+                <p className="text-sm">{message.content}</p>
+                <span className="text-xs text-gray-400">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            ))}
+            {conversationHistory.length === 0 && (
+              <div className="text-center text-gray-400 py-8">
+                <p>Click "Ask Question" to start talking with your AI tutor!</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -409,23 +423,6 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Persona Selection */}
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">AI Voice Persona</label>
-            <Select value={preferences.selectedPersona} onValueChange={updatePersona}>
-              <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700">
-                {Object.entries(VOICE_PERSONAS).map(([key, persona]) => (
-                  <SelectItem key={key} value={key} className="text-white hover:bg-gray-700">
-                    {persona.name} ({persona.accent})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Language Selection */}
           <div>
             <label className="text-sm text-gray-400 mb-2 block flex items-center">
@@ -475,56 +472,8 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               className="w-full"
             />
           </div>
-
-          {/* Feature Toggles */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Noise Cancellation</span>
-              <Button
-                size="sm"
-                variant={preferences.noiseCancellation ? "default" : "outline"}
-                onClick={toggleNoiseCancellation}
-                className={preferences.noiseCancellation ? "bg-blue-600 text-white" : "border-gray-600 text-gray-400"}
-              >
-                {preferences.noiseCancellation ? 'On' : 'Off'}
-              </Button>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400 flex items-center">
-                <Accessibility className="mr-1 h-4 w-4" />
-                Accessibility Mode
-              </span>
-              <Button
-                size="sm"
-                variant={preferences.accessibilityMode ? "default" : "outline"}
-                onClick={toggleAccessibilityMode}
-                className={preferences.accessibilityMode ? "bg-blue-600 text-white" : "border-gray-600 text-gray-400"}
-              >
-                {preferences.accessibilityMode ? 'On' : 'Off'}
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
-
-      {/* Voice Commands Help */}
-      {preferences.accessibilityMode && (
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">Available Voice Commands</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-400">
-              {VOICE_COMMANDS.map((command) => (
-                <div key={command} className="bg-gray-800 px-2 py-1 rounded">
-                  "{command}"
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
