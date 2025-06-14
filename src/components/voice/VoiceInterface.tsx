@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useVoicePreferences } from '@/hooks/useVoicePreferences';
 
 interface VoiceInterfaceProps {
   courseContent?: string;
@@ -96,33 +97,27 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { preferences, updatePersona, updateLanguage, updateSpeechSpeed, updateVolume, toggleNoiseCancellation, toggleAccessibilityMode } = useVoicePreferences();
   
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState('code-master');
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [speechSpeed, setSpeechSpeed] = useState([1]);
-  const [volume, setVolume] = useState([0.7]);
-  const [isAudioOnly, setIsAudioOnly] = useState(false);
-  const [noiseCancellation, setNoiseCancellation] = useState(true);
-  const [accessibilityMode, setAccessibilityMode] = useState(false);
   
   // Voice recognition
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+      const SpeechRecognitionConstructor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognitionConstructor();
       
       if (recognitionRef.current) {
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = selectedLanguage;
+        recognitionRef.current.lang = preferences.selectedLanguage;
         
         recognitionRef.current.onresult = handleSpeechResult;
         recognitionRef.current.onerror = handleSpeechError;
@@ -140,14 +135,14 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       stopListening();
       stopSpeaking();
     };
-  }, [selectedLanguage, isListening, disabled]);
+  }, [preferences.selectedLanguage, isListening, disabled]);
 
   // Audio context for noise cancellation
   useEffect(() => {
-    if (noiseCancellation) {
+    if (preferences.noiseCancellation) {
       initializeAudioContext();
     }
-  }, [noiseCancellation]);
+  }, [preferences.noiseCancellation]);
 
   const initializeAudioContext = async () => {
     try {
@@ -221,11 +216,11 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         speakText('Resuming');
         break;
       case 'slower':
-        setSpeechSpeed([Math.max(0.5, speechSpeed[0] - 0.1)]);
+        updateSpeechSpeed(Math.max(0.5, preferences.speechSpeed - 0.1));
         speakText('Speaking slower');
         break;
       case 'faster':
-        setSpeechSpeed([Math.min(2.0, speechSpeed[0] + 0.1)]);
+        updateSpeechSpeed(Math.min(2.0, preferences.speechSpeed + 0.1));
         speakText('Speaking faster');
         break;
       case 'explain this':
@@ -244,15 +239,15 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     if (!speechSynthesisRef.current || isSpeaking) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = speechSpeed[0];
-    utterance.volume = volume[0];
-    utterance.lang = selectedLanguage;
+    utterance.rate = preferences.speechSpeed;
+    utterance.volume = preferences.volume;
+    utterance.lang = preferences.selectedLanguage;
     
     // Set voice based on selected persona
     const voices = speechSynthesisRef.current.getVoices();
     const selectedVoice = voices.find(voice => 
-      voice.name.includes(VOICE_PERSONAS[selectedPersona].accent) ||
-      voice.lang.startsWith(selectedLanguage)
+      voice.name.includes(VOICE_PERSONAS[preferences.selectedPersona].accent) ||
+      voice.lang.startsWith(preferences.selectedLanguage)
     );
     
     if (selectedVoice) {
@@ -283,7 +278,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       recognitionRef.current.start();
       setIsListening(true);
       
-      if (accessibilityMode) {
+      if (preferences.accessibilityMode) {
         speakText('Voice recognition started. I am listening.');
       }
       
@@ -298,7 +293,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         variant: "destructive",
       });
     }
-  }, [disabled, accessibilityMode]);
+  }, [disabled, preferences.accessibilityMode]);
 
   const stopListening = () => {
     if (recognitionRef.current) {
@@ -306,7 +301,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     }
     setIsListening(false);
     
-    if (accessibilityMode) {
+    if (preferences.accessibilityMode) {
       speakText('Voice recognition stopped.');
     }
   };
@@ -417,7 +412,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           {/* Persona Selection */}
           <div>
             <label className="text-sm text-gray-400 mb-2 block">AI Voice Persona</label>
-            <Select value={selectedPersona} onValueChange={setSelectedPersona}>
+            <Select value={preferences.selectedPersona} onValueChange={updatePersona}>
               <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                 <SelectValue />
               </SelectTrigger>
@@ -437,7 +432,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               <Languages className="mr-1 h-4 w-4" />
               Language
             </label>
-            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+            <Select value={preferences.selectedLanguage} onValueChange={updateLanguage}>
               <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                 <SelectValue />
               </SelectTrigger>
@@ -454,11 +449,11 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           {/* Speech Speed */}
           <div>
             <label className="text-sm text-gray-400 mb-2 block">
-              Speech Speed: {speechSpeed[0].toFixed(1)}x
+              Speech Speed: {preferences.speechSpeed.toFixed(1)}x
             </label>
             <Slider
-              value={speechSpeed}
-              onValueChange={setSpeechSpeed}
+              value={[preferences.speechSpeed]}
+              onValueChange={(value) => updateSpeechSpeed(value[0])}
               min={0.5}
               max={2.0}
               step={0.1}
@@ -469,11 +464,11 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           {/* Volume */}
           <div>
             <label className="text-sm text-gray-400 mb-2 block">
-              Volume: {Math.round(volume[0] * 100)}%
+              Volume: {Math.round(preferences.volume * 100)}%
             </label>
             <Slider
-              value={volume}
-              onValueChange={setVolume}
+              value={[preferences.volume]}
+              onValueChange={(value) => updateVolume(value[0])}
               min={0}
               max={1}
               step={0.1}
@@ -484,26 +479,14 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           {/* Feature Toggles */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Audio-Only Mode</span>
-              <Button
-                size="sm"
-                variant={isAudioOnly ? "default" : "outline"}
-                onClick={() => setIsAudioOnly(!isAudioOnly)}
-                className={isAudioOnly ? "bg-blue-600 text-white" : "border-gray-600 text-gray-400"}
-              >
-                {isAudioOnly ? 'On' : 'Off'}
-              </Button>
-            </div>
-            
-            <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">Noise Cancellation</span>
               <Button
                 size="sm"
-                variant={noiseCancellation ? "default" : "outline"}
-                onClick={() => setNoiseCancellation(!noiseCancellation)}
-                className={noiseCancellation ? "bg-blue-600 text-white" : "border-gray-600 text-gray-400"}
+                variant={preferences.noiseCancellation ? "default" : "outline"}
+                onClick={toggleNoiseCancellation}
+                className={preferences.noiseCancellation ? "bg-blue-600 text-white" : "border-gray-600 text-gray-400"}
               >
-                {noiseCancellation ? 'On' : 'Off'}
+                {preferences.noiseCancellation ? 'On' : 'Off'}
               </Button>
             </div>
             
@@ -514,11 +497,11 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               </span>
               <Button
                 size="sm"
-                variant={accessibilityMode ? "default" : "outline"}
-                onClick={() => setAccessibilityMode(!accessibilityMode)}
-                className={accessibilityMode ? "bg-blue-600 text-white" : "border-gray-600 text-gray-400"}
+                variant={preferences.accessibilityMode ? "default" : "outline"}
+                onClick={toggleAccessibilityMode}
+                className={preferences.accessibilityMode ? "bg-blue-600 text-white" : "border-gray-600 text-gray-400"}
               >
-                {accessibilityMode ? 'On' : 'Off'}
+                {preferences.accessibilityMode ? 'On' : 'Off'}
               </Button>
             </div>
           </div>
@@ -526,7 +509,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       </Card>
 
       {/* Voice Commands Help */}
-      {accessibilityMode && (
+      {preferences.accessibilityMode && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white">Available Voice Commands</CardTitle>
