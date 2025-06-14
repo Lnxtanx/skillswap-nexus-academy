@@ -6,417 +6,237 @@ import { ArrowLeft, Play, Pause, RotateCcw, Maximize, Minimize } from 'lucide-re
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-
-interface Particle {
-  id: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  color: string;
-  size: number;
-  type: 'fruit';
-  cut: boolean;
-}
-
-interface MouseTrail {
-  x: number;
-  y: number;
-  color: string;
-  life: number;
-}
+import GameCanvas, { GameCanvasRef } from './fruit/GameCanvas';
+import { Particle, MouseTrail, GameState } from './fruit/types';
+import { COLORS, COLOR_NAMES, DIRECTIONS, LEVELS } from './fruit/constants';
+import { createParticle, checkDirectionMatch } from './fruit/gameLogic';
+import { speakInstruction } from './fruit/voiceCommands';
 
 interface FruitCuttingGameProps {
   onBack: () => void;
 }
 
-const COLORS = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ff00ff', '#ffa500'];
-const COLOR_NAMES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
-const DIRECTIONS = ['left', 'right', 'top', 'bottom'];
-const LEVELS = [
-  { level: 1, speed: 0.3, particleCount: 50, timeLimit: 120 },
-  { level: 2, speed: 0.4, particleCount: 60, timeLimit: 150 },
-  { level: 3, speed: 0.5, particleCount: 70, timeLimit: 180 },
-  { level: 4, speed: 0.6, particleCount: 80, timeLimit: 200 },
-  { level: 5, speed: 0.7, particleCount: 100, timeLimit: 240 }
-];
-
 const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<GameCanvasRef>(null);
   const animationRef = useRef<number>();
   
-  const [currentLevel, setCurrentLevel] = useState(1);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [score, setScore] = useState(0);
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [mouseTrails, setMouseTrails] = useState<MouseTrail[]>([]);
-  const [targetColor, setTargetColor] = useState<string>('');
-  const [targetColorName, setTargetColorName] = useState<string>('');
-  const [targetDirection, setTargetDirection] = useState<string>('');
-  const [timeLeft, setTimeLeft] = useState(120);
-  const [particlesCut, setParticlesCut] = useState(0);
-  const [particlesMissed, setParticlesMissed] = useState(0);
-  const [gameStartTime, setGameStartTime] = useState<number>(0);
+  const [gameState, setGameState] = useState<GameState>({
+    currentLevel: 1,
+    isPlaying: false,
+    isFullscreen: false,
+    score: 0,
+    particles: [],
+    mouseTrails: [],
+    targetColor: '',
+    targetColorName: '',
+    targetDirection: '',
+    timeLeft: 120,
+    particlesCut: 0,
+    particlesMissed: 0,
+    gameStartTime: 0
+  });
 
-  const levelConfig = LEVELS[currentLevel - 1];
-
-  // Voice instruction function with better error handling
-  const speakInstruction = useCallback(async (text: string) => {
-    try {
-      console.log('Speaking:', text);
-      
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
-        utterance.volume = 0.8;
-        utterance.pitch = 1.0;
-        
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(voice => voice.lang.includes('en'));
-        if (englishVoice) {
-          utterance.voice = englishVoice;
-        }
-        
-        window.speechSynthesis.speak(utterance);
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { 
-          text,
-          voice: 'alloy'
-        }
-      });
-
-      if (error) {
-        console.error('TTS API error:', error);
-        return;
-      }
-
-      if (data?.audioContent) {
-        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-        audio.volume = 0.7;
-        await audio.play();
-      }
-    } catch (error) {
-      console.error('Voice instruction failed:', error);
-    }
-  }, []);
+  const levelConfig = LEVELS[gameState.currentLevel - 1];
 
   // Generate new target with direction commands
   const generateNewTarget = useCallback(() => {
     const colorIndex = Math.floor(Math.random() * COLORS.length);
     const newColor = COLORS[colorIndex];
     const newColorName = COLOR_NAMES[colorIndex];
-    const shouldAddDirection = Math.random() < 0.4; // 40% chance for direction
+    const shouldAddDirection = Math.random() < 0.4;
     const direction = shouldAddDirection ? DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)] : '';
     
-    setTargetColor(newColor);
-    setTargetColorName(newColorName);
-    setTargetDirection(direction);
+    setGameState(prev => ({
+      ...prev,
+      targetColor: newColor,
+      targetColorName: newColorName,
+      targetDirection: direction
+    }));
     
     const instruction = direction 
       ? `Cut ${newColorName} fruits from the ${direction}!`
       : `Cut the ${newColorName} fruits!`;
     
     speakInstruction(instruction);
-  }, [speakInstruction]);
+  }, []);
 
-  // Create new particle with improved movement towards center
-  const createParticle = useCallback((): Particle => {
-    const canvas = canvasRef.current;
-    if (!canvas) return {} as Particle;
-
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const side = Math.floor(Math.random() * 4);
-    let x, y, vx, vy;
-
-    // Spawn from edges and move towards center with improved trajectories
-    switch (side) {
-      case 0: // top
-        x = Math.random() * canvas.width;
-        y = -50;
-        vx = (centerX - x) * 0.0008 + (Math.random() - 0.5) * 0.2;
-        vy = Math.random() * 0.5 + 0.8;
-        break;
-      case 1: // right
-        x = canvas.width + 50;
-        y = Math.random() * canvas.height;
-        vx = -(Math.random() * 0.5 + 0.8);
-        vy = (centerY - y) * 0.0008 + (Math.random() - 0.5) * 0.2;
-        break;
-      case 2: // bottom
-        x = Math.random() * canvas.width;
-        y = canvas.height + 50;
-        vx = (centerX - x) * 0.0008 + (Math.random() - 0.5) * 0.2;
-        vy = -(Math.random() * 0.5 + 0.8);
-        break;
-      default: // left
-        x = -50;
-        y = Math.random() * canvas.height;
-        vx = Math.random() * 0.5 + 0.8;
-        vy = (centerY - y) * 0.0008 + (Math.random() - 0.5) * 0.2;
-    }
-
-    const colorIndex = Math.floor(Math.random() * COLORS.length);
-
-    return {
-      id: Math.random().toString(36).substr(2, 9),
-      x,
-      y,
-      vx: vx * levelConfig.speed,
-      vy: vy * levelConfig.speed,
-      color: COLORS[colorIndex],
-      size: Math.random() * 10 + 15,
-      type: 'fruit',
-      cut: false
-    };
-  }, [levelConfig.speed]);
-
-  // Check if particle matches direction requirement
-  const checkDirectionMatch = useCallback((particle: Particle) => {
-    if (!targetDirection) return true;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return true;
-
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
-    switch (targetDirection) {
-      case 'left':
-        return particle.x < centerX;
-      case 'right':
-        return particle.x > centerX;
-      case 'top':
-        return particle.y < centerY;
-      case 'bottom':
-        return particle.y > centerY;
-      default:
-        return true;
-    }
-  }, [targetDirection]);
-
-  // Enhanced game loop with aggressive particle generation
+  // Enhanced game loop with MASSIVE particle generation
   const gameLoop = useCallback(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
+    const canvas = canvasRef.current?.getCanvas();
+    if (!canvas) return;
 
-    // Clear canvas with fade effect
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Update and draw mouse trails with enhanced effects
-    setMouseTrails(prevTrails => {
-      const updatedTrails = prevTrails.map(trail => ({
+    setGameState(prev => {
+      // Update mouse trails
+      const updatedTrails = prev.mouseTrails.map(trail => ({
         ...trail,
         life: trail.life - 0.015
       })).filter(trail => trail.life > 0);
 
-      updatedTrails.forEach((trail, index) => {
-        ctx.globalAlpha = trail.life;
-        
-        for (let i = 0; i < 4; i++) {
-          const offset = i * 4;
-          const size = (10 - i * 2) * trail.life;
-          const hue = (Date.now() * 0.1 + offset) % 360;
-          ctx.fillStyle = `hsl(${hue}, 100%, ${70 + i * 5}%)`;
-          ctx.beginPath();
-          ctx.arc(
-            trail.x + Math.sin(Date.now() * 0.01 + offset) * 3, 
-            trail.y + Math.cos(Date.now() * 0.01 + offset) * 3, 
-            size, 0, 2 * Math.PI
-          );
-          ctx.fill();
-        }
-      });
-
-      ctx.globalAlpha = 1.0;
-      return updatedTrails;
-    });
-
-    // Update and draw particles with continuous generation
-    setParticles(prevParticles => {
-      console.log('Current particle count:', prevParticles.length);
-      
-      const updatedParticles = prevParticles.map(particle => {
+      // Update particles with enhanced movement
+      const updatedParticles = prev.particles.map(particle => {
         if (!particle.cut) {
           particle.x += particle.vx;
           particle.y += particle.vy;
           
-          // Minimal gravity
-          particle.vy += 0.01;
+          // Minimal gravity for natural movement
+          particle.vy += 0.008;
           
-          // Keep particles moving towards center
+          // Strong center attraction to keep particles in play
           const centerX = canvas.width / 2;
           const centerY = canvas.height / 2;
           const dx = centerX - particle.x;
           const dy = centerY - particle.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          if (distance > 100) {
-            particle.vx += (dx / distance) * 0.015;
-            particle.vy += (dy / distance) * 0.015;
+          if (distance > 120) {
+            particle.vx += (dx / distance) * 0.02;
+            particle.vy += (dy / distance) * 0.02;
           }
         }
-
-        // Enhanced rendering with better glow effects
-        const isTarget = particle.color === targetColor;
-        const isDirectionMatch = checkDirectionMatch(particle);
-        const isValidTarget = isTarget && isDirectionMatch;
-        
-        if (isValidTarget && !particle.cut) {
-          ctx.shadowColor = particle.color;
-          ctx.shadowBlur = 30;
-          
-          const pulseSize = Math.sin(Date.now() * 0.01) * 5 + 10;
-          ctx.beginPath();
-          ctx.arc(particle.x, particle.y, particle.size + pulseSize, 0, 2 * Math.PI);
-          ctx.fillStyle = particle.color + '30';
-          ctx.fill();
-        }
-        
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, 2 * Math.PI);
-        ctx.fillStyle = particle.cut ? '#444' : particle.color;
-        ctx.fill();
-        
-        if (isValidTarget && !particle.cut) {
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 5;
-          ctx.stroke();
-        }
-        
-        ctx.shadowBlur = 0;
-
         return particle;
       }).filter(particle => {
-        // Much more generous boundary - particles stay in play longer
-        if (particle.x < -300 || particle.x > canvas.width + 300 || 
-            particle.y < -300 || particle.y > canvas.height + 300) {
-          if (!particle.cut && particle.color === targetColor && checkDirectionMatch(particle)) {
-            setParticlesMissed(prev => prev + 1);
+        // Very generous boundaries to keep particles longer
+        if (particle.x < -400 || particle.x > canvas.width + 400 || 
+            particle.y < -400 || particle.y > canvas.height + 400) {
+          if (!particle.cut && particle.color === prev.targetColor && 
+              checkDirectionMatch(particle, prev.targetDirection, canvas)) {
+            return false; // Will increment missed count
           }
           return false;
         }
         return true;
       });
 
-      // AGGRESSIVE particle generation - always maintain high count
+      // MASSIVE particle generation - maintain very high count
       const targetCount = levelConfig.particleCount;
-      const particlesToAdd = Math.max(0, targetCount - updatedParticles.length);
+      const currentCount = updatedParticles.length;
+      const particlesToAdd = Math.max(0, targetCount - currentCount);
       
-      // Add required particles to reach target count
+      // Add particles to reach target count
       for (let i = 0; i < particlesToAdd; i++) {
-        updatedParticles.push(createParticle());
+        updatedParticles.push(createParticle(canvas, levelConfig));
       }
 
-      // Add extra particles every frame to ensure abundance
-      const extraParticles = Math.floor(Math.random() * 3) + 2; // 2-4 extra particles per frame
+      // Add continuous stream of extra particles for abundance
+      const extraParticles = Math.floor(Math.random() * 8) + 5; // 5-12 extra particles per frame
       for (let i = 0; i < extraParticles; i++) {
-        if (updatedParticles.length < targetCount * 1.5) { // Allow up to 1.5x target count
-          updatedParticles.push(createParticle());
+        if (updatedParticles.length < targetCount * 2) { // Allow up to 2x target count
+          updatedParticles.push(createParticle(canvas, levelConfig));
         }
       }
 
-      console.log('Final particle count:', updatedParticles.length, 'Target:', targetCount);
-      return updatedParticles;
+      console.log('Particle count:', updatedParticles.length, 'Target:', targetCount);
+
+      return {
+        ...prev,
+        particles: updatedParticles,
+        mouseTrails: updatedTrails
+      };
     });
 
-    if (isPlaying) {
+    if (gameState.isPlaying) {
       animationRef.current = requestAnimationFrame(gameLoop);
     }
-  }, [isPlaying, targetColor, levelConfig.particleCount, createParticle, checkDirectionMatch]);
+  }, [gameState.isPlaying, levelConfig]);
 
-  // Enhanced mouse move handler with better trail effects
+  // Enhanced mouse move handler
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current?.getCanvas();
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
     const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
     const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-    for (let i = 0; i < 3; i++) {
-      setMouseTrails(prev => [
-        ...prev.slice(-50),
-        {
-          x: mouseX + (Math.random() - 0.5) * 10,
-          y: mouseY + (Math.random() - 0.5) * 10,
-          color: `hsl(${Date.now() % 360}, 100%, 60%)`,
-          life: 1.0
-        }
-      ]);
+    // Enhanced mouse trail generation
+    for (let i = 0; i < 5; i++) {
+      setGameState(prev => ({
+        ...prev,
+        mouseTrails: [
+          ...prev.mouseTrails.slice(-50),
+          {
+            x: mouseX + (Math.random() - 0.5) * 15,
+            y: mouseY + (Math.random() - 0.5) * 15,
+            color: `hsl(${Date.now() % 360}, 100%, 60%)`,
+            life: 1.0
+          }
+        ]
+      }));
     }
 
-    if (!isPlaying) return;
+    if (!gameState.isPlaying) return;
 
-    setParticles(prevParticles => 
-      prevParticles.map(particle => {
+    setGameState(prev => ({
+      ...prev,
+      particles: prev.particles.map(particle => {
         if (!particle.cut) {
           const distance = Math.sqrt(
             Math.pow(mouseX - particle.x, 2) + Math.pow(mouseY - particle.y, 2)
           );
 
-          if (distance < particle.size + 20) {
+          if (distance < particle.size + 25) {
             particle.cut = true;
             
-            const isValidTarget = particle.color === targetColor && checkDirectionMatch(particle);
+            const isValidTarget = particle.color === prev.targetColor && 
+                                checkDirectionMatch(particle, prev.targetDirection, canvas);
             
             if (isValidTarget) {
-              setScore(prev => prev + 10);
-              setParticlesCut(prev => prev + 1);
-              
-              for (let i = 0; i < 30; i++) {
-                setMouseTrails(prev => [...prev, {
-                  x: particle.x + (Math.random() - 0.5) * 100,
-                  y: particle.y + (Math.random() - 0.5) * 100,
+              // Add explosion effect
+              for (let i = 0; i < 40; i++) {
+                const explosionTrail = {
+                  x: particle.x + (Math.random() - 0.5) * 120,
+                  y: particle.y + (Math.random() - 0.5) * 120,
                   color: particle.color,
                   life: 1.5
-                }]);
+                };
+                prev.mouseTrails.push(explosionTrail);
               }
+              
+              return {
+                ...prev,
+                score: prev.score + 10,
+                particlesCut: prev.particlesCut + 1
+              };
             } else {
-              setScore(prev => Math.max(0, prev - 3));
+              return {
+                ...prev,
+                score: Math.max(0, prev.score - 3)
+              };
             }
           }
         }
-        return particle;
+        return prev;
       })
-    );
-  }, [isPlaying, targetColor, checkDirectionMatch]);
+    }));
+  }, [gameState.isPlaying, gameState.targetColor, gameState.targetDirection]);
 
   // Timer effect
   useEffect(() => {
-    if (isPlaying && timeLeft > 0) {
+    if (gameState.isPlaying && gameState.timeLeft > 0) {
       const timer = setTimeout(() => {
-        setTimeLeft(prev => prev - 1);
+        setGameState(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && isPlaying) {
+    } else if (gameState.timeLeft === 0 && gameState.isPlaying) {
       endGame();
     }
-  }, [isPlaying, timeLeft]);
+  }, [gameState.isPlaying, gameState.timeLeft]);
 
   // Target color change effect
   useEffect(() => {
-    if (isPlaying && targetColor) {
+    if (gameState.isPlaying && gameState.targetColor) {
       const interval = setInterval(() => {
         generateNewTarget();
       }, 8000);
       return () => clearInterval(interval);
     }
-  }, [isPlaying, generateNewTarget, targetColor]);
+  }, [gameState.isPlaying, generateNewTarget, gameState.targetColor]);
 
   // Game loop effect
   useEffect(() => {
-    if (isPlaying) {
+    if (gameState.isPlaying) {
       animationRef.current = requestAnimationFrame(gameLoop);
     }
     return () => {
@@ -424,121 +244,140 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, gameLoop]);
+  }, [gameState.isPlaying, gameLoop]);
 
   // Initialize particles when game starts
   useEffect(() => {
-    if (isPlaying && particles.length === 0) {
-      console.log('Initializing particles...');
+    if (gameState.isPlaying && gameState.particles.length === 0) {
+      console.log('Initializing massive particle count...');
       const initialParticles = [];
-      for (let i = 0; i < levelConfig.particleCount; i++) {
-        initialParticles.push(createParticle());
+      const canvas = canvasRef.current?.getCanvas();
+      if (canvas) {
+        for (let i = 0; i < levelConfig.particleCount; i++) {
+          initialParticles.push(createParticle(canvas, levelConfig));
+        }
+        setGameState(prev => ({ ...prev, particles: initialParticles }));
+        console.log('Initialized particles:', initialParticles.length);
       }
-      setParticles(initialParticles);
-      console.log('Initialized particles:', initialParticles.length);
     }
-  }, [isPlaying, levelConfig.particleCount, createParticle]);
+  }, [gameState.isPlaying, levelConfig.particleCount]);
 
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    setGameState(prev => ({ ...prev, isFullscreen: !prev.isFullscreen }));
   };
 
   const startGame = () => {
-    console.log('Starting game...');
-    setIsPlaying(true);
-    setScore(0);
-    setParticlesCut(0);
-    setParticlesMissed(0);
-    setTimeLeft(levelConfig.timeLimit);
-    setGameStartTime(Date.now());
-    setParticles([]);
-    setMouseTrails([]);
-    setIsFullscreen(true);
+    console.log('Starting game with enhanced particle system...');
+    setGameState(prev => ({
+      ...prev,
+      isPlaying: true,
+      score: 0,
+      particlesCut: 0,
+      particlesMissed: 0,
+      timeLeft: levelConfig.timeLimit,
+      gameStartTime: Date.now(),
+      particles: [],
+      mouseTrails: [],
+      isFullscreen: true
+    }));
     generateNewTarget();
-    speakInstruction(`Level ${currentLevel} starting! Get ready to cut fruits!`);
+    speakInstruction(`Level ${gameState.currentLevel} starting! Get ready to cut fruits!`);
   };
 
   const pauseGame = () => {
-    setIsPlaying(false);
+    setGameState(prev => ({ ...prev, isPlaying: false }));
   };
 
   const endGame = async () => {
-    setIsPlaying(false);
-    setIsFullscreen(false);
-    const timeTaken = Math.round((Date.now() - gameStartTime) / 1000);
-    const accuracy = particlesCut > 0 ? (particlesCut / (particlesCut + particlesMissed)) * 100 : 0;
+    setGameState(prev => ({ ...prev, isPlaying: false, isFullscreen: false }));
+    const timeTaken = Math.round((Date.now() - gameState.gameStartTime) / 1000);
+    const accuracy = gameState.particlesCut > 0 ? 
+      (gameState.particlesCut / (gameState.particlesCut + gameState.particlesMissed)) * 100 : 0;
 
     if (user) {
       try {
         await supabase.from('game_scores').insert({
           user_id: user.id,
           game_type: 'fruit',
-          level: currentLevel,
-          score,
+          level: gameState.currentLevel,
+          score: gameState.score,
           accuracy,
           time_taken: timeTaken,
-          particles_cut: particlesCut,
-          particles_missed: particlesMissed
+          particles_cut: gameState.particlesCut,
+          particles_missed: gameState.particlesMissed
         });
 
         toast({
           title: "Game Complete!",
-          description: `Score: ${score} | Accuracy: ${accuracy.toFixed(1)}%`,
+          description: `Score: ${gameState.score} | Accuracy: ${accuracy.toFixed(1)}%`,
         });
       } catch (error) {
         console.error('Error saving score:', error);
       }
     }
 
-    speakInstruction(`Game over! Your score is ${score} points with ${accuracy.toFixed(1)} percent accuracy!`);
+    speakInstruction(`Game over! Your score is ${gameState.score} points!`);
   };
 
   const resetGame = () => {
-    setIsPlaying(false);
-    setIsFullscreen(false);
-    setScore(0);
-    setParticlesCut(0);
-    setParticlesMissed(0);
-    setTimeLeft(levelConfig.timeLimit);
-    setParticles([]);
-    setMouseTrails([]);
-    setTargetColor('');
-    setTargetColorName('');
-    setTargetDirection('');
+    setGameState({
+      currentLevel: 1,
+      isPlaying: false,
+      isFullscreen: false,
+      score: 0,
+      particles: [],
+      mouseTrails: [],
+      targetColor: '',
+      targetColorName: '',
+      targetDirection: '',
+      timeLeft: 120,
+      particlesCut: 0,
+      particlesMissed: 0,
+      gameStartTime: 0
+    });
+  };
+  
+  const setCurrentLevel = (level: number) => {
+    setGameState(prev => ({ ...prev, currentLevel: level }));
   };
 
-  if (isFullscreen) {
+  const checkDirectionMatchWrapper = useCallback((particle: Particle) => {
+    return checkDirectionMatch(particle, gameState.targetDirection, canvasRef.current?.getCanvas()!);
+  }, [gameState.targetDirection]);
+
+  if (gameState.isFullscreen) {
     return (
       <div className="fixed inset-0 bg-black z-50 flex flex-col">
         <div className="flex items-center justify-between p-4 bg-gray-900">
           <div className="flex items-center space-x-4">
-            <Button onClick={toggleFullscreen} className="bg-gray-700 hover:bg-gray-600 text-white">
+            <Button onClick={() => setGameState(prev => ({ ...prev, isFullscreen: false }))} 
+                    className="bg-gray-700 hover:bg-gray-600 text-white">
               <Minimize className="h-4 w-4" />
             </Button>
             <h1 className="text-xl font-bold text-white">Fruit Cutting Game</h1>
           </div>
           
           <div className="flex items-center space-x-4">
-            {targetColor && (
+            {gameState.targetColor && (
               <div className="flex items-center space-x-2">
                 <div 
                   className="w-8 h-8 rounded-full border-2 border-white"
-                  style={{ backgroundColor: targetColor }}
+                  style={{ backgroundColor: gameState.targetColor }}
                 ></div>
                 <span className="text-white font-bold">
-                  Cut {targetColorName}{targetDirection && ` from ${targetDirection}`}!
+                  Cut {gameState.targetColorName}{gameState.targetDirection && ` from ${gameState.targetDirection}`}!
                 </span>
               </div>
             )}
-            <Badge variant="outline" className="text-white">Score: {score}</Badge>
-            <Badge variant="secondary">Time: {timeLeft}s</Badge>
-            <Badge variant="outline" className="text-green-400">Particles: {particles.length}</Badge>
+            <Badge variant="outline" className="text-white">Score: {gameState.score}</Badge>
+            <Badge variant="secondary">Time: {gameState.timeLeft}s</Badge>
+            <Badge variant="outline" className="text-green-400">Particles: {gameState.particles.length}</Badge>
           </div>
           
           <div className="flex space-x-2">
             <Button
-              onClick={pauseGame}
-              disabled={!isPlaying}
+              onClick={() => setGameState(prev => ({ ...prev, isPlaying: false }))}
+              disabled={!gameState.isPlaying}
               className="bg-yellow-600 hover:bg-yellow-700 text-white"
             >
               <Pause className="h-4 w-4" />
@@ -553,12 +392,15 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
         </div>
 
         <div className="flex-1">
-          <canvas
+          <GameCanvas
             ref={canvasRef}
-            width={window.innerWidth}
-            height={window.innerHeight - 80}
-            className="w-full h-full bg-gradient-to-b from-blue-900/30 to-green-900/30 cursor-crosshair"
+            particles={gameState.particles}
+            mouseTrails={gameState.mouseTrails}
+            targetColor={gameState.targetColor}
+            targetDirection={gameState.targetDirection}
+            isFullscreen={gameState.isFullscreen}
             onMouseMove={handleMouseMove}
+            checkDirectionMatch={checkDirectionMatchWrapper}
           />
         </div>
       </div>
@@ -574,8 +416,8 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
         </Button>
         <h1 className="text-2xl font-bold gradient-text">Fruit Cutting Game</h1>
         <div className="flex items-center space-x-2">
-          <Badge variant="secondary">Level {currentLevel}</Badge>
-          <Badge variant="outline" className="text-white">Score: {score}</Badge>
+          <Badge variant="secondary">Level {gameState.currentLevel}</Badge>
+          <Badge variant="outline" className="text-white">Score: {gameState.score}</Badge>
         </div>
       </div>
 
@@ -593,13 +435,15 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
                   <Maximize className="h-4 w-4" />
                 </Button>
               </div>
-              <canvas
+              <GameCanvas
                 ref={canvasRef}
-                width={800}
-                height={400}
-                className="w-full bg-gradient-to-b from-blue-900/30 to-green-900/30 rounded-lg cursor-crosshair border-2 border-gray-700"
+                particles={gameState.particles}
+                mouseTrails={gameState.mouseTrails}
+                targetColor={gameState.targetColor}
+                targetDirection={gameState.targetDirection}
+                isFullscreen={gameState.isFullscreen}
                 onMouseMove={handleMouseMove}
-                style={{ maxWidth: '100%', height: 'auto' }}
+                checkDirectionMatch={checkDirectionMatchWrapper}
               />
             </CardContent>
           </Card>
@@ -614,7 +458,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
               <div className="space-y-2">
                 <Button
                   onClick={startGame}
-                  disabled={isPlaying}
+                  disabled={gameState.isPlaying}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Play className="mr-2 h-4 w-4" />
@@ -622,7 +466,7 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
                 </Button>
                 <Button
                   onClick={pauseGame}
-                  disabled={!isPlaying}
+                  disabled={!gameState.isPlaying}
                   className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
                 >
                   <Pause className="mr-2 h-4 w-4" />
@@ -644,14 +488,14 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
               <CardTitle className="text-white">Current Target</CardTitle>
             </CardHeader>
             <CardContent>
-              {targetColor && (
+              {gameState.targetColor && (
                 <div className="text-center">
                   <div 
                     className="w-16 h-16 rounded-full mx-auto mb-2 border-4 border-white shadow-lg"
-                    style={{ backgroundColor: targetColor }}
+                    style={{ backgroundColor: gameState.targetColor }}
                   ></div>
                   <p className="text-white font-bold">
-                    Cut {targetColorName} fruits{targetDirection && ` from ${targetDirection}`}!
+                    Cut {gameState.targetColorName} fruits{gameState.targetDirection && ` from ${gameState.targetDirection}`}!
                   </p>
                 </div>
               )}
@@ -665,25 +509,19 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
             <CardContent className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Time:</span>
-                <span className="text-white">{timeLeft}s</span>
+                <span className="text-white">{gameState.timeLeft}s</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Particles:</span>
-                <span className="text-blue-400">{particles.length}</span>
+                <span className="text-blue-400">{gameState.particles.length}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Cut:</span>
-                <span className="text-green-400">{particlesCut}</span>
+                <span className="text-green-400">{gameState.particlesCut}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Missed:</span>
-                <span className="text-red-400">{particlesMissed}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Accuracy:</span>
-                <span className="text-blue-400">
-                  {particlesCut > 0 ? ((particlesCut / (particlesCut + particlesMissed)) * 100).toFixed(1) : 0}%
-                </span>
+                <span className="text-red-400">{gameState.particlesMissed}</span>
               </div>
             </CardContent>
           </Card>
@@ -694,13 +532,13 @@ const FruitCuttingGame: React.FC<FruitCuttingGameProps> = ({ onBack }) => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-2">
-                {LEVELS.map((level, index) => (
+                {LEVELS.map((level) => (
                   <Button
                     key={level.level}
                     size="sm"
                     onClick={() => setCurrentLevel(level.level)}
-                    disabled={isPlaying}
-                    className={`${currentLevel === level.level 
+                    disabled={gameState.isPlaying}
+                    className={`${gameState.currentLevel === level.level 
                       ? 'bg-blue-600 hover:bg-blue-700' 
                       : 'bg-gray-700 hover:bg-gray-600'} text-white`}
                   >
