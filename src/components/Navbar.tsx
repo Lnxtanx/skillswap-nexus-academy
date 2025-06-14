@@ -1,177 +1,165 @@
 
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogOut } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import AuthModal from "@/components/auth/AuthModal";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Menu, X, User, LogOut, Gamepad2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import AuthModal from './auth/AuthModal';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const location = useLocation();
-  const { user, signOut, loading } = useAuth();
-
-  const navigation = [
-    { name: "Home", href: "/" },
-    { name: "Courses", href: "/courses" },
-    { name: "Learn", href: "/learn" },
-  ];
-
-  const isActivePath = (path: string) => {
-    return location.pathname === path;
-  };
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      // Error is handled in useAuth hook
-    }
+    await signOut();
+    navigate('/');
   };
 
+  const navItems = [
+    { name: 'Home', path: '/' },
+    { name: 'Courses', path: '/courses' },
+    { name: 'Learn', path: '/learn' },
+    { name: 'Play', path: '/play' },
+  ];
+
   return (
-    <nav className="fixed top-0 w-full bg-black/95 backdrop-blur-sm border-b border-gray-800 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-bold gradient-text">SkillSwap</span>
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">SS</span>
+              </div>
+              <span className="text-white font-bold text-xl">SkillSwap</span>
             </Link>
-          </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`${
-                  isActivePath(item.href)
-                    ? "text-blue-400 border-b-2 border-blue-400"
-                    : "text-gray-300 hover:text-blue-400"
-                } px-3 py-2 text-sm font-medium transition-colors duration-200`}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </div>
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-8">
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  className={`text-sm font-medium transition-colors hover:text-blue-400 ${
+                    location.pathname === item.path
+                      ? 'text-blue-400'
+                      : 'text-gray-300'
+                  }`}
+                >
+                  {item.name === 'Play' && <Gamepad2 className="inline mr-1 h-4 w-4" />}
+                  {item.name}
+                </Link>
+              ))}
+            </div>
 
-          {/* Desktop Auth */}
-          <div className="hidden md:flex items-center space-x-4">
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-800 animate-pulse" />
-            ) : user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
-                      <AvatarFallback className="bg-gray-800 text-white">
-                        {user.email?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-gray-900 border-gray-800 text-white" align="end" forceMount>
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center text-white hover:bg-gray-800">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut} className="text-white hover:bg-gray-800">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0">
-                Sign In
-              </Button>
-            )}
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-300 hover:text-blue-400 p-2"
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-gray-900 border-t border-gray-800">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setIsMenuOpen(false)}
-                className={`${
-                  isActivePath(item.href)
-                    ? "text-blue-400 bg-gray-800"
-                    : "text-gray-300 hover:text-blue-400 hover:bg-gray-800"
-                } block px-3 py-2 text-base font-medium rounded-md transition-colors duration-200`}
-              >
-                {item.name}
-              </Link>
-            ))}
-            
-            {/* Mobile Auth */}
-            <div className="pt-4 pb-2 border-t border-gray-800">
+            {/* Desktop Auth */}
+            <div className="hidden md:flex items-center space-x-4">
               {user ? (
-                <div className="space-y-1">
-                  <Link
-                    to="/profile"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center px-3 py-2 text-base font-medium text-gray-300 hover:text-blue-400 hover:bg-gray-800 rounded-md"
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
+                <>
+                  <Link to="/profile">
+                    <Button size="sm" className="bg-gray-800 hover:bg-gray-700 text-white">
+                      <User className="w-4 h-4 mr-2" />
+                      Profile
+                    </Button>
                   </Link>
-                  <button
-                    onClick={() => {
-                      handleSignOut();
-                      setIsMenuOpen(false);
-                    }}
-                    className="flex items-center w-full px-3 py-2 text-base font-medium text-gray-300 hover:text-blue-400 hover:bg-gray-800 rounded-md"
+                  <Button
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="bg-red-600 hover:bg-red-700 text-white"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign out
-                  </button>
-                </div>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </>
               ) : (
-                <Button 
-                  onClick={() => {
-                    setShowAuthModal(true);
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
+                <Button
+                  size="sm"
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Sign In
                 </Button>
               )}
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden text-white"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
-      )}
 
-      <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} />
-    </nav>
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden bg-black border-t border-gray-800">
+            <div className="container mx-auto px-4 py-4 space-y-4">
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  className={`block text-sm font-medium transition-colors hover:text-blue-400 ${
+                    location.pathname === item.path
+                      ? 'text-blue-400'
+                      : 'text-gray-300'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.name === 'Play' && <Gamepad2 className="inline mr-1 h-4 w-4" />}
+                  {item.name}
+                </Link>
+              ))}
+              
+              <div className="pt-4 border-t border-gray-800">
+                {user ? (
+                  <div className="space-y-2">
+                    <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
+                      <Button size="sm" className="w-full bg-gray-800 hover:bg-gray-700 text-white">
+                        <User className="w-4 h-4 mr-2" />
+                        Profile
+                      </Button>
+                    </Link>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        handleSignOut();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setShowAuthModal(true);
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Sign In
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
+    </>
   );
 };
 

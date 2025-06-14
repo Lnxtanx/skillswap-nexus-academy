@@ -189,6 +189,48 @@ export type Database = {
           },
         ]
       }
+      game_scores: {
+        Row: {
+          accuracy: number
+          created_at: string
+          game_type: string
+          id: string
+          level: number
+          particles_cut: number
+          particles_missed: number
+          score: number
+          time_taken: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number
+          created_at?: string
+          game_type: string
+          id?: string
+          level: number
+          particles_cut?: number
+          particles_missed?: number
+          score?: number
+          time_taken?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number
+          created_at?: string
+          game_type?: string
+          id?: string
+          level?: number
+          particles_cut?: number
+          particles_missed?: number
+          score?: number
+          time_taken?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lessons: {
         Row: {
           content: string | null
