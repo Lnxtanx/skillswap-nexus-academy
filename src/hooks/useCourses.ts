@@ -16,7 +16,7 @@ export const useCourses = () => {
         .from('courses')
         .select(`
           *,
-          instructor:users(id, username, full_name, avatar_url)
+          instructor:users!courses_instructor_id_fkey(id, username, full_name, avatar_url)
         `)
         .order('created_at', { ascending: false });
       
@@ -34,7 +34,7 @@ export const useCourse = (id: number) => {
         .from('courses')
         .select(`
           *,
-          instructor:users(id, username, full_name, avatar_url),
+          instructor:users!courses_instructor_id_fkey(id, username, full_name, avatar_url),
           lessons(*)
         `)
         .eq('id', id)

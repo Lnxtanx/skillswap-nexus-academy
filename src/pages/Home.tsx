@@ -37,23 +37,6 @@ const Home = () => {
     }
   ];
 
-  const topInstructors = [
-    {
-      name: "Sarah Johnson",
-      title: "Full-Stack Developer & Instructor",
-      coursesCompleted: 15,
-      coursesTeaching: 8,
-      rating: 4.9
-    },
-    {
-      name: "Dr. Michael Chen",
-      title: "Data Science Expert",
-      coursesCompleted: 22,
-      coursesTeaching: 12,
-      rating: 4.8
-    }
-  ];
-
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -153,11 +136,12 @@ const Home = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {topInstructors.map((instructor, index) => (
-              <div key={index} className="animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <UserProfile {...instructor} />
-              </div>
-            ))}
+            <div className="animate-slide-up">
+              <UserProfile showActions={false} />
+            </div>
+            <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <UserProfile showActions={false} />
+            </div>
           </div>
         </div>
       </section>
